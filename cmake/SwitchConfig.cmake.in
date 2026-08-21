@@ -1,0 +1,47 @@
+@PACKAGE_INIT@
+
+set(Switch_VERSION "@PROJECT_VERSION@")
+
+if(NOT CMAKE_GENERATOR MATCHES "^Ninja")
+  set(Switch_FOUND FALSE)
+  set(Switch_NOT_FOUND_MESSAGE
+      "Switch 0.1.0 currently requires a Ninja generator for C++26 module "
+      "support.")
+  return()
+endif()
+
+if(NOT 26 IN_LIST CMAKE_CXX_COMPILER_IMPORT_STD)
+  set(Switch_FOUND FALSE)
+  set(Switch_NOT_FOUND_MESSAGE
+      "Switch requires CMake toolchain support for C++26 'import std;'.")
+  return()
+endif()
+
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "@CMAKE_CXX_COMPILER_ID@")
+  set(Switch_FOUND FALSE)
+  set(Switch_NOT_FOUND_MESSAGE
+      "This Switch package was built with @CMAKE_CXX_COMPILER_ID@, but the "
+      "consumer is using ${CMAKE_CXX_COMPILER_ID}. Rebuild Switch with the "
+      "consumer toolchain or consume it from source.")
+  return()
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
+                                            VERSION_LESS 16)
+  set(Switch_FOUND FALSE)
+  set(Switch_NOT_FOUND_MESSAGE
+      "Switch requires GCC 16 or newer when consumed with GCC.")
+  return()
+endif()
+
+include(CMakeFindDependencyMacro)
+
+if(NOT TARGET Miracle::Miracle)
+  find_dependency(Miracle 0.1.0 CONFIG)
+endif()
+
+if(NOT TARGET Switch::Switch)
+  include("${CMAKE_CURRENT_LIST_DIR}/SwitchTargets.cmake")
+endif()
+
+check_required_components(Switch)

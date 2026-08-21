@@ -1,0 +1,20 @@
+export module Switch;
+
+export import :Annotations;
+export import :Diagnostics;
+export import :Render;
+export import :Environment;
+export import :Context;
+export import :Task;
+export import :Expressions;
+export import :Assertions;
+export import :Policies;
+export import :Providers;
+export import :Execution;
+export import :Fixtures;
+export import :Runner;
+export import :Reporting;
+export import :Json;
+export import :Discovery;
+export import :Resources;
+export import :Session;
