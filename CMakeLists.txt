@@ -42,6 +42,10 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
   message(FATAL_ERROR "Switch requires GCC 16 or newer when built with GCC.")
 endif()
 
+set(SWITCH_MIRACLE_FETCHCONTENT_TAG
+    "v0.1.0-rc.1"
+    CACHE STRING "Miracle revision used by Switch's FetchContent fallback")
+
 # Dependency injection is intentionally target-first. A parent build such as
 # Miracle's self-tests can provide Miracle::Miracle directly without Switch
 # attempting to discover or populate another copy.
@@ -55,8 +59,8 @@ if(NOT TARGET Miracle::Miracle AND FETCHCONTENT_SOURCE_DIR_MIRACLE)
   include(FetchContent)
   FetchContent_Declare(
     Miracle
-    GIT_REPOSITORY https:/github.com/spwn02/Miracle.git
-    GIT_TAG master
+    GIT_REPOSITORY https://github.com/spwn02/Miracle.git
+    GIT_TAG ${SWITCH_MIRACLE_FETCHCONTENT_TAG}
     GIT_SHALLOW TRUE)
   FetchContent_MakeAvailable(Miracle)
 endif()
@@ -75,7 +79,7 @@ if(NOT TARGET Miracle::Miracle)
   FetchContent_Declare(
     Miracle
     GIT_REPOSITORY https://github.com/spwn02/Miracle.git
-    GIT_TAG master
+    GIT_TAG ${SWITCH_MIRACLE_FETCHCONTENT_TAG}
     GIT_SHALLOW TRUE)
   FetchContent_MakeAvailable(Miracle)
 endif()

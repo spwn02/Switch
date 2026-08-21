@@ -150,15 +150,16 @@ ctest --preset tests
 
 `SWITCH_BUILD_EXAMPLES=ON` builds repository examples.
 
-`SWITCH_BUILD_TESTS=ON` build Switch's self-test suite. It defaults to enabled when Switch is the top-level project and disabled when Switch is consumed as a dependency.
+`SWITCH_BUILD_TESTS=ON` builds Switch's self-test suite. It defaults to enabled when Switch is the top-level project and disabled when Switch is consumed as a dependency.
 
 ## Architecture
 
-See [`docs/architecture.md`](docs/architecture.md)
+See [`docs/architecture.md`](docs/architecture.md).
 
 ## Contributing and security
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md).
 
 ## License
+
 Apache License 2.0.

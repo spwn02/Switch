@@ -6,11 +6,13 @@ This project is currently pre-1.0 and follows semantic versioning for release nu
 
 ## Unreleased
 
+## 0.1.0-rc.1 - 2026-08-21
+
 ### Added
 
 - Standalone C++26 testing-framework identity: `import Switch;` / `Switch::Switch`.
 - Public Miracle dependency with target-first source/package resolution.
 - Reflection-driven macro-free test discovery and parameterized cases.
-- Fixtures, explicit number subjects, deterministic scheduling, virtual time, native fault isolation, measurements, bounded retention, human reporting, and JSON output.
+- Fixtures, explicit member subjects, deterministic scheduling, virtual time, native fault isolation, measurements, bounded retention, human reporting, and JSON output.
 - Source, FetchContent, and installed-package consumption.
 - Standalone CI, documentation, examples, and release scaffolding.
