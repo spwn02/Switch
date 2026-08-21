@@ -39,7 +39,7 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                             VERSION_LESS 16)
-  message(FATAL_ERROR"Switch requires GCC 16 or newer when built with GCC.")
+  message(FATAL_ERROR "Switch requires GCC 16 or newer when built with GCC.")
 endif()
 
 # Dependency injection is intentionally target-first. A parent build such as
@@ -82,10 +82,7 @@ endif()
 
 if(NOT TARGET Miracle::Miracle)
   message(
-    FATAL_ERROR
-      "Switch requires Miracle::Miracle. "
-      # TODO: Add standalone Miracle dependency resolution; for now the parent
-      # build must provide Miracle before adding Switch.
+    FATAL_ERROR "Switch dependency resolution did not provide Miracle::Miracle."
   )
 endif()
 
@@ -234,8 +231,15 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SwitchConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/SwitchConfigVersion.cmake"
         DESTINATION "${switch_cmake_install_dir}")
 
+install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DATADIR}/Switch")
+
+option(SWITCH_BUILD_EXAMPLES "Build Switch examples" OFF)
 option(SWITCH_BUILD_TESTS "Build Switch's self-test suite"
        ${PROJECT_IS_TOP_LEVEL})
+
+if(SWITCH_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
 if(SWITCH_BUILD_TESTS)
   enable_testing()

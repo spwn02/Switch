@@ -1,0 +1,13 @@
+CompileFlags:
+  CompilationDatabase: build/debug
+  Add:
+    - -std=c++26
+    - -freflection-latest
+    - -x
+    - c++
+    - -nostdinc++
+Index:
+  Background: Build
+  StandardLibrary: true
+Completion:
+  HeaderInsertion: Never

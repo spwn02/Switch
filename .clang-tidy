@@ -1,0 +1,66 @@
+---
+# Enable specific rule groups and disable noisy rules
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  modernize-use-structured-binding,
+  modernize-use-trailing-return-type,
+  performance-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -readability-braces-around-statements,
+  -readability-static-accessed-through-instance,
+
+# Treat all enabled warnings as errors to enforce compliance in CI/CD
+WarningsAsErrors: '*'
+
+# Filter headers so Clang-Tidy checks your source files and project headers, 
+# but skips external dependencies like standard library or third-party code
+HeaderFilterRegex: '^(src|include)/'
+
+# Format code automatically when applying fixes via the command line
+FormatStyle: file
+
+# Fine-tune rules using key-value options
+CheckOptions:
+  # Enforce variable and naming styles
+  - key:             readability-identifier-naming.VariableCase
+    value:           camelBack
+  # Permit the C++26 discard-variable convention: auto _ = expression();
+  - key:             readability-identifier-length.IgnoredVariableNames
+    value:           '^_$'
+  # - key:             readability-identifier-naming.VariableIgnoredRegexp
+  #   value:           '^__.*$'
+  - key:             readability-identifier-naming.FunctionCase
+    value:           camelBack
+  - key:             readability-identifier-naming.PrivateMemberCase
+    value:           camelBack
+  - key:             readability-identifier-naming.PrivateMemberSuffix
+    value:           _
+  - key:             readability-identifier-naming.StaticVariableCase
+    value:           camelBack
+  - key:             readability-identifier-naming.StaticVariableSuffix
+    value:           _
+  - key:             readability-identifier-naming.ClassConstantCase
+    value:           camelBack
+  - key:             readability-identifier-naming.ClassConstantSuffix
+    value:           _
+  - key:             readability-identifier-naming.ClassCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.MacroDefinitionCase
+    value:           UPPER_CASE
+  # - key:             bugprone-reserved-identifier.AllowedIdentifiers
+  #   value:           '^__(N|range)$'
+
+  # Allow small functions inside header definitions without warnings
+  - key:             readability-function-size.LineThreshold
+    value:           100
+
+  # Flag parameters that should be passed by value and std::moved
+  - key:             performance-unnecessary-value-param.AllowedTypes
+    value:           '^[Ss]tring$'
+...

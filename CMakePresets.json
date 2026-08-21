@@ -12,7 +12,8 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "SWITCH_WARNINGS_AS_ERRORS": "ON"
       }
     },
     {
@@ -40,6 +41,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "SWITCH_BUILD_EXAMPLES": "ON",
         "SWITCH_BUILD_TESTS": "ON"
       }
     }
