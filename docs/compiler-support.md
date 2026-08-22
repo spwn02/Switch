@@ -44,6 +44,12 @@ The fork builds on Bloomberg's Clang/P2996 work and is being extended with a foc
 
 Other toolchains become eligible for `master` support when they implement the required standardized behavior faithfully. Support is ultimately capability-driven rather than vendor- or version-driven.
 
+The compiler alone is not the reference unit: its matching libc++ headers, binaries, ABI runtime, and C++ module sources/metadata belong to the same validated toolchain build. Deliberately mixing components from unrelated toolchain revisions is unsupported.
+
+The `p2996` branch is the mutable source-development channel, not a CI/release pin. It is planned to introduce immutable `p2996-YYYY.MM.DD` toolchain snapshots. CI and releases will pin those snapshots rather than following the branch.
+
+See [`reference-toolchain.md`](reference-toolchain.md) for the complete identity, provenance, selection, component-coherence, and snapshot contract.
+
 ## GCC compatibility branch
 
 The deferred GCC compatibility branch is named:

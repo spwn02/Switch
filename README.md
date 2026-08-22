@@ -19,6 +19,8 @@ Switch has one public production dependency: [Miracle](https://github.com/spwn02
 
 See [`docs/compiler-support.md`](docs/compiler-support.md) for the compiler, branch, compatibility, and release policy.
 
+The exact composition and ownership rules of the current reference compiler/libc++ pair are documented in [`docs/reference-toolchain.md`](docs/reference-toolchain.md).
+
 ## Quick start
 
 ```cpp
@@ -157,6 +159,8 @@ ctest --preset tests
 See [`docs/architecture.md`](docs/architecture.md).
 
 See [`docs/compiler-support.md`](docs/compiler-support.md) for the C++26 reference-toolchain and deferred GCC compatibility contract.
+
+See [`docs/reference-toolchain.md`](docs/reference-toolchain.md) for the reference Clang/libc++ identity, provenance, component-coherence rules, and future snapshot model.
 
 ## Contributing and security
 

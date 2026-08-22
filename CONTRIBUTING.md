@@ -4,7 +4,11 @@ Switch is a C++26 reflection-first testing framework. Contributions should prese
 
 ## Toolchain
 
-The verified public baseline is GCC 16+ with CMake 4.4+ and Ninja. A reflection-enabled Clang toolchain is also used for development.
+Development of `master` targets the complete C++26-and-earlier model. The current reference implementation is [`spwn02/clang-p2996:p2996`](https://github.com/spwn02/clang-p2996/tree/p2996) together with the matching libc++ from that same toolchain build.
+
+Use CMake 4.4+ and Ninja. Select the reference compiler before the top-level CMake configuration; do not add machine-specific compiler paths to checked-in presets.
+
+See [`docs/compiler-support.md`](docs/compiler-support.md) and [`docs/reference-toolchain.md`](docs/reference-toolchain.md) before making compiler-compatibility, reflection-lowering, or standard-library fallback changes.
 
 ## Core invariants
 
