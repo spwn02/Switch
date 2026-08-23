@@ -31,7 +31,7 @@ The current reference implementation is:
 
 ```text
 compiler:
-  https://github.com/swpn02/clang-p2996
+  https://github.com/spwn02/clang-p2996
   branch: p2996
 
 standard library:
@@ -46,7 +46,7 @@ Other toolchains become eligible for `master` support when they implement the re
 
 The compiler alone is not the reference unit: its matching libc++ headers, binaries, ABI runtime, and C++ module sources/metadata belong to the same validated toolchain build. Deliberately mixing components from unrelated toolchain revisions is unsupported.
 
-The `p2996` branch is the mutable source-development channel, not a CI/release pin. It is planned to introduce immutable `p2996-YYYY.MM.DD` toolchain snapshots. CI and releases will pin those snapshots rather than following the branch.
+The `p2996` branch is the mutable source-development channel, not a CI/release pin. Immutable `p2996-YYYY.MM.DD[.N]` snapshots provide validated compiler, libc++, ABI/runtime, module, and toolchain-file units. The current validated reference snapshot is `p2996-2026.08.23.2`.
 
 See [`reference-toolchain.md`](reference-toolchain.md) for the complete identity, provenance, selection, component-coherence, and snapshot contract.
 
@@ -60,7 +60,7 @@ gcc
 
 It may span GCC 16, 17, 18, and later versions.
 
-The branch may trait `master` indefinitely. It advances only as far as Switch's public semantics can be represented faithfully with the capabilities available in GCC and libstdc++.
+The branch may trail `master` indefinitely. It advances only as far as Switch's public semantics can be represented faithfully with the capabilities available in GCC and libstdc++.
 
 Normal synchronization direction is:
 
@@ -128,7 +128,7 @@ Whether `arg<"...">(...)` remains as a general convenience API afterward is a se
 
 ## Compatibility rules
 
-The GCC branch adapts implementation details to compiler reality; it does not redefine Miracle.
+The GCC branch adapts implementation details to compiler reality; it does not redefine Switch.
 
 Compatibility work follows these rules:
 
@@ -172,19 +172,31 @@ gcc branch is retired
 
 ## Capability-driven support
 
-Compiler support will progressively move from vendor/version checks to focused capability probes.
+`master` enforces compiler support through executable capability probes rather than treating compiler vendor or version as proof of support.
 
-For Switch these probes must be fine-grained enough to distinguish, among other things:
+Miracle validates the shared foundation contract: C++26 `import std`, core reflection and queries, annotations and extraction, static reflection storage, expansion statements, and the standard-library vocabulary required by the foundation layer.
 
-- core reflection;
-- parameter reflection;
-- direct annotations;
-- `annotations_of` on reflected function parameters;
-- annotation extraction;
-- `import std`;
-- standard-library facilities required by Miracle and Switch.
+Switch adds only the requirements unique to the testing framework:
+
+```text
+direct_parameter_annotations
+  direct annotation on a reflected function parameter
+  -> parameters_of
+  -> annotations_of(parameter)
+  -> extract<Annotation>
+
+std_scope
+  <scope>
+  -> std::scope_exit
+```
+
+Each probe is compiled independently in a nested C++26 project. A selected CMake toolchain file is reused verbatim; Switch does not reconstruct compiler-specific mode flags. Without a toolchain file, the already-selected compiler and user-supplied global C++ flags are reused.
+
+Probe results are emitted as `SwitchCapabilities.json`. Failed probe build logs are retained beneath `CMakeFiles/SwitchCapabilities/`, and configuration reports all missing Switch-specific capabilities together.
 
 "Parameter reflection supported" is not equivalent to "direct reflected parameter annotations work." Compatibility documentation and diagnostics should preserve that distinction.
+
+These probes are executable requirements of the current Switch source revision, not an exhaustive C++26 conformance suite.
 
 ## Module artifacts
 

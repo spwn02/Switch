@@ -21,6 +21,7 @@ project(
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(cmake/Capabilities.cmake)
 
 if(NOT CMAKE_GENERATOR MATCHES "^Ninja")
   message(
@@ -35,11 +36,6 @@ if(NOT 26 IN_LIST CMAKE_CXX_COMPILER_IMPORT_STD)
       "Switch requires toolchain support for C++26 'import std;'. "
       "When Switch is a subproject, enable CMake's import-std support before "
       "the top-level project() call.")
-endif()
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
-                                            VERSION_LESS 16)
-  message(FATAL_ERROR "Switch requires GCC 16 or newer when built with GCC.")
 endif()
 
 set(SWITCH_MIRACLE_FETCHCONTENT_TAG
@@ -89,6 +85,8 @@ if(NOT TARGET Miracle::Miracle)
     FATAL_ERROR "Switch dependency resolution did not provide Miracle::Miracle."
   )
 endif()
+
+switch_check_capabilities()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(switch_fault_isolation_source src/private/posix/FaultIsolation.cxx)
