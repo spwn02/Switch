@@ -10,57 +10,174 @@ on:
 permissions:
   contents: read
 
-jobs:
-  gcc16:
-    runs-on: ubuntu-latest
-    container: gcc:16
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Install build tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            ca-certificates git ninja-build python3 python3-venv
-          python3 -m venv /opt/cmake
-          /opt/cmake/bin/pip install --no-cache-dir cmake==4.4.2
-          echo "/opt/cmake/bin" >> "$GITHUB_PATH"
+env:
+  P2996_SNAPSHOT: p2996-2026.08.23.2
+  P2996_REVISION: 60966cc65acc736637ffd4ba03951932e47f5042
+  P2996_ASSET: clang-p2996-2026.08.23.2-linux-x86_64
 
+jobs:
+  reference:
+    name: Reference C++26 (p2996-2026.08.23.2)
+    runs-on: ubuntu-22.04
+
+    steps:
       - uses: actions/checkout@v6
 
-      - name: Toolchain
+      - name: Install build tools
+        shell: bash
         run: |
+          set -euo pipefail
+
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            ca-certificates curl ninja-build python3 python3-venv zstd
+
+          python3 -m venv "$RUNNER_TEMP/cmake"
+          "$RUNNER_TEMP/cmake/bin/pip" install --no-cache-dir cmake==4.4.2
+          echo "$RUNNER_TEMP/cmake/bin" >> "$GITHUB_PATH"
+
+      - name: Install pinned reference toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_base="https://github.com/spwn02/clang-p2996/releases/download/${P2996_SNAPSHOT}"
+          download_dir="$RUNNER_TEMP/p2996-download"
+          install_dir="$RUNNER_TEMP/p2996-install"
+
+          mkdir -p "$download_dir" "$install_dir"
+
+          for suffix in tar.zst manifest.json SHA256SUMS; do
+            curl \
+              --fail \
+              --location \
+              --retry 3 \
+              --retry-all-errors \
+              --output "$download_dir/${P2996_ASSET}.${suffix}" \
+              "$release_base/${P2996_ASSET}.${suffix}"
+          done
+
+          (
+            cd "$download_dir"
+            sha256sum --check "${P2996_ASSET}.SHA256SUMS"
+          )
+
+          python3 - \
+            "$download_dir/${P2996_ASSET}.manifest.json" \
+            "$P2996_SNAPSHOT" \
+            "$P2996_REVISION" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          manifest_path = Path(sys.argv[1])
+          expected_snapshot = sys.argv[2]
+          expected_revision = sys.argv[3]
+
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+          assert manifest["snapshot"] == expected_snapshot, (
+              manifest["snapshot"],
+              expected_snapshot,
+          )
+          assert manifest["source"]["revision"] == expected_revision, (
+              manifest["source"]["revision"],
+              expected_revision,
+          )
+          assert manifest["platform"]["os"] == "linux"
+          assert manifest["platform"]["architecture"] == "x86_64"
+          assert manifest["cmake"]["minimumConsumerVersion"] == "4.4"
+          PY
+
+          tar \
+            --use-compress-program=unzstd \
+            -xf "$download_dir/${P2996_ASSET}.tar.zst" \
+            -C "$install_dir"
+
+          toolchain_root="$install_dir/clang-${P2996_SNAPSHOT}"
+          test -x "$toolchain_root/bin/clang++"
+          test -f "$toolchain_root/share/clang-p2996/toolchain.cmake"
+          test -f "$toolchain_root/share/clang-p2996/activate.sh"
+
+          cmp \
+            "$download_dir/${P2996_ASSET}.manifest.json" \
+            "$toolchain_root/share/clang-p2996/manifest.json"
+
+          # shellcheck disable=SC1090
+          source "$toolchain_root/share/clang-p2996/activate.sh"
+
+          {
+            echo "P2996_TOOLCHAIN_ROOT=$P2996_TOOLCHAIN_ROOT"
+            echo "P2996_CMAKE_TOOLCHAIN_FILE=$P2996_CMAKE_TOOLCHAIN_FILE"
+            echo "CC=$CC"
+            echo "CXX=$CXX"
+            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+          } >> "$GITHUB_ENV"
+
+          echo "$P2996_TOOLCHAIN_ROOT/bin" >> "$GITHUB_PATH"
+
+      - name: Toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
           cmake --version
-          g++ --version
+          "$CXX" --version
           ninja --version
 
       - name: Self-tests and examples
+        shell: bash
         run: |
-          cmake --preset tests --fresh
+          set -euo pipefail
+
+          cmake --preset tests --fresh \
+            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE"
           cmake --build --preset tests
           ctest --preset tests
 
       - name: add_subdirectory consumer
+        shell: bash
         run: |
-          cmake -S tests/consumer/add-subdirectory -B build/consumer-add -G Ninja \
+          set -euo pipefail
+
+          cmake \
+            -S tests/consumer/add-subdirectory \
+            -B build/consumer-add \
+            -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
             -DSWITCH_SOURCE_DIR="$GITHUB_WORKSPACE"
           cmake --build build/consumer-add
           ./build/consumer-add/switch_consumer
 
       - name: FetchContent consumer
+        shell: bash
         run: |
-          cmake -S tests/consumer/fetch-content -B build/consumer-fetch -G Ninja \
+          set -euo pipefail
+
+          cmake \
+            -S tests/consumer/fetch-content \
+            -B build/consumer-fetch \
+            -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
             -DFETCHCONTENT_SOURCE_DIR_SWITCH="$GITHUB_WORKSPACE"
           cmake --build build/consumer-fetch
           ./build/consumer-fetch/switch_consumer
 
       - name: Installed-package consumer
+        shell: bash
         run: |
-          cmake --preset release --fresh
+          set -euo pipefail
+
+          cmake --preset release --fresh \
+            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE"
           cmake --build --preset release
           cmake --install build/release --prefix "$GITHUB_WORKSPACE/build/install"
-          cmake -S tests/consumer/find-package -B build/consumer-package -G Ninja \
+
+          cmake \
+            -S tests/consumer/find-package \
+            -B build/consumer-package \
+            -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
             -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build/install"
           cmake --build build/consumer-package
           ./build/consumer-package/switch_consumer
