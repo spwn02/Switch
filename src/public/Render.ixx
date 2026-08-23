@@ -77,7 +77,7 @@ struct RendererOptions final {
   DetailMode details{DetailMode::Failures};
   usize tabWidth{4};
 
-  [[nodiscard]] constexpr auto effectiveSections() const noexcept -> DiagnosticSections;
+  [[nodiscard]] auto effectiveSections() const noexcept -> DiagnosticSections;
 };
 
 class AnsiRenderer final {

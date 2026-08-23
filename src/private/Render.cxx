@@ -866,7 +866,7 @@ auto SourceManager::sourceLine(const SourceSpan &span) const -> Option<SourceLin
   };
 }
 
-constexpr auto RendererOptions::effectiveSections() const noexcept -> DiagnosticSections {
+auto RendererOptions::effectiveSections() const noexcept -> DiagnosticSections {
   if (sections)
     return *sections;
 
