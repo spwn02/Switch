@@ -26,14 +26,6 @@ if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "@CMAKE_CXX_COMPILER_ID@")
   return()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
-                                            VERSION_LESS 16)
-  set(Switch_FOUND FALSE)
-  set(Switch_NOT_FOUND_MESSAGE
-      "Switch requires GCC 16 or newer when consumed with GCC.")
-  return()
-endif()
-
 include(CMakeFindDependencyMacro)
 
 if(NOT TARGET Miracle::Miracle)

@@ -39,7 +39,7 @@ if(NOT 26 IN_LIST CMAKE_CXX_COMPILER_IMPORT_STD)
 endif()
 
 set(SWITCH_MIRACLE_FETCHCONTENT_TAG
-    "v0.1.0-rc.1"
+    "bab1016b54f567951b2cd98301c80243b847a609"
     CACHE STRING "Miracle revision used by Switch's FetchContent fallback")
 
 # Dependency injection is intentionally target-first. A parent build such as
@@ -57,7 +57,7 @@ if(NOT TARGET Miracle::Miracle AND FETCHCONTENT_SOURCE_DIR_MIRACLE)
     Miracle
     GIT_REPOSITORY https://github.com/spwn02/Miracle.git
     GIT_TAG ${SWITCH_MIRACLE_FETCHCONTENT_TAG}
-    GIT_SHALLOW TRUE)
+    GIT_SHALLOW FALSE)
   FetchContent_MakeAvailable(Miracle)
 endif()
 
@@ -76,7 +76,7 @@ if(NOT TARGET Miracle::Miracle)
     Miracle
     GIT_REPOSITORY https://github.com/spwn02/Miracle.git
     GIT_TAG ${SWITCH_MIRACLE_FETCHCONTENT_TAG}
-    GIT_SHALLOW TRUE)
+    GIT_SHALLOW FALSE)
   FetchContent_MakeAvailable(Miracle)
 endif()
 

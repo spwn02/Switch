@@ -14,6 +14,7 @@ env:
   P2996_SNAPSHOT: p2996-2026.08.23.2
   P2996_REVISION: 60966cc65acc736637ffd4ba03951932e47f5042
   P2996_ASSET: clang-p2996-2026.08.23.2-linux-x86_64
+  MIRACLE_REVISION: bab1016b54f567951b2cd98301c80243b847a609
 
 jobs:
   reference:
@@ -131,7 +132,8 @@ jobs:
           set -euo pipefail
 
           cmake --preset tests --fresh \
-            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE"
+            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION"
           cmake --build --preset tests
           ctest --preset tests
 
@@ -145,6 +147,7 @@ jobs:
             -B build/consumer-add \
             -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION" \
             -DSWITCH_SOURCE_DIR="$GITHUB_WORKSPACE"
           cmake --build build/consumer-add
           ./build/consumer-add/switch_consumer
@@ -159,6 +162,7 @@ jobs:
             -B build/consumer-fetch \
             -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION" \
             -DFETCHCONTENT_SOURCE_DIR_SWITCH="$GITHUB_WORKSPACE"
           cmake --build build/consumer-fetch
           ./build/consumer-fetch/switch_consumer
@@ -169,7 +173,8 @@ jobs:
           set -euo pipefail
 
           cmake --preset release --fresh \
-            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE"
+            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION"
           cmake --build --preset release
           cmake --install build/release --prefix "$GITHUB_WORKSPACE/build/install"
 
