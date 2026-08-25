@@ -8,6 +8,15 @@ on:
 permissions:
   contents: read
 
+env:
+  REFERENCE_REPOSITORY: spwn02/clang-cxx26
+  REFERENCE_BRANCH: cxx26
+  REFERENCE_SNAPSHOT: p2996-2026.08.23.2
+  REFERENCE_REVISION: 60966cc65acc736637ffd4ba03951932e47f5042
+  REFERENCE_ASSET: clang-p2996-2026.08.23.2-linux-x86_64
+  MIRACLE_RELEASE_TAG: v0.1.0-rc.1
+  MIRACLE_RELEASE_REVISION: b16bcb4672957060d3b99e036e7532ee2bd0fcf6
+
 jobs:
   validate:
     uses: ./.github/workflows/ci.yml
@@ -19,10 +28,14 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Validate tag version
+      - name: Validate release provenance
         shell: bash
         run: |
+          set -euo pipefail
+
           version="$(sed -n 's/^[[:space:]]*VERSION[[:space:]]\+\([0-9][0-9.]*\).*/\1/p' CMakeLists.txt | head -n1)"
           case "$GITHUB_REF_NAME" in
             "v${version}"|"v${version}-"*) ;;
@@ -32,13 +45,79 @@ jobs:
               ;;
           esac
 
-      - name: Create GitHub release
+          git fetch --no-tags origin master:refs/remotes/origin/master
+          source_revision="$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
+
+          if ! git merge-base --is-ancestor "$source_revision" origin/master; then
+            echo "::error::release tag '$GITHUB_REF_NAME' does not point to master history"
+            exit 1
+          fi
+
+          configured_miracle_tag="$(
+            sed -n \
+              '/^set(SWITCH_MIRACLE_FETCHCONTENT_TAG$/{n;s/[[:space:]"]//g;p;q;}' \
+              CMakeLists.txt
+          )"
+          if [[ "$configured_miracle_tag" != "$MIRACLE_RELEASE_TAG" ]]; then
+            echo "::error::Switch FetchContent fallback '$configured_miracle_tag' does not match release dependency '$MIRACLE_RELEASE_TAG'"
+            exit 1
+          fi
+
+          miracle_revision="$(
+            git ls-remote \
+              https://github.com/spwn02/Miracle.git \
+              "refs/tags/${MIRACLE_RELEASE_TAG}^{}" |
+              awk '{print $1}'
+          )"
+          if [[ "$miracle_revision" != "$MIRACLE_RELEASE_REVISION" ]]; then
+            echo "::error::Miracle release '$MIRACLE_RELEASE_TAG' resolves to '$miracle_revision', expected '$MIRACLE_RELEASE_REVISION'"
+            exit 1
+          fi
+
+          {
+            echo "PROJECT_VERSION=$version"
+            echo "SOURCE_REVISION=$source_revision"
+          } >> "$GITHUB_ENV"
+
+      - name: Write release provenance
         shell: bash
         run: |
+          set -euo pipefail
+
+          metadata="$RUNNER_TEMP/release-metadata.json"
+          python3 .github/scripts/create-release-metadata.py \
+            --project Switch \
+            --version "$PROJECT_VERSION" \
+            --tag "$GITHUB_REF_NAME" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-branch master \
+            --source-revision "$SOURCE_REVISION" \
+            --reference-repository "$REFERENCE_REPOSITORY" \
+            --reference-branch "$REFERENCE_BRANCH" \
+            --reference-snapshot "$REFERENCE_SNAPSHOT" \
+            --reference-revision "$REFERENCE_REVISION" \
+            --reference-asset "$REFERENCE_ASSET" \
+            --dependency "Miracle=$MIRACLE_RELEASE_REVISION" \
+            --output "$metadata"
+
+          test -s "$metadata"
+          python3 -m json.tool "$metadata" >/dev/null
+
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
           release_args=(--verify-tag --generate-notes)
 
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then
             release_args+=(--prerelease)
           fi
 
-          gh release create "$GITHUB_REF_NAME" "${release_args[@]}"
+          gh release create \
+            "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/release-metadata.json" \
+            "${release_args[@]}"
