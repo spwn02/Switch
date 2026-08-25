@@ -2,6 +2,7 @@ import std;
 
 import Miracle;
 import Switch;
+import SwitchTests.Support;
 
 using namespace Miracle;
 using namespace Switch;
@@ -176,7 +177,7 @@ reportsOnlyTheTimeoutWhenCancellationCannotResumeATask() -> void {
   require(outerContext);
 
   const TestExecution execution = runVirtually("async abort", [&cleaned] -> Task<void> { // NOLINT
-    const auto cleanup = std::scope_exit([&cleaned] -> void { cleaned = true; });
+    const auto cleanup = Tests::support::ScopeExit([&cleaned] -> void { cleaned = true; });
     co_await yield();
     require(false);
   });
@@ -198,7 +199,7 @@ reportsOnlyTheTimeoutWhenCancellationCannotResumeATask() -> void {
   const TestExecution execution = runVirtually(
       "cancellation cleanup",
       [&cleanupCalls, &observedStop](const Context &context) -> Task<void> { // NOLINT
-        const auto cleanup = std::scope_exit([&cleanupCalls] -> void { ++cleanupCalls; });
+        const auto cleanup = Tests::support::ScopeExit([&cleanupCalls] -> void { ++cleanupCalls; });
         co_await sleepFor(oneHour);
         observedStop = context.stopToken.stop_requested();
         require(observedStop);

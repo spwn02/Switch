@@ -3,6 +3,33 @@ export module Switch:Task;
 import std;
 import Miracle;
 
+namespace Switch::detail {
+
+template <class Function>
+class ScopeExit final {
+public:
+  constexpr explicit ScopeExit(Function function) noexcept(std::is_nothrow_move_constructible_v<Function>)
+      : function_(std::move(function)) {
+  }
+
+  ~ScopeExit() noexcept {
+    std::invoke(function_);
+  }
+
+  ScopeExit(const ScopeExit &) = delete;
+  auto operator=(const ScopeExit &) -> ScopeExit & = delete;
+  ScopeExit(ScopeExit &&) = delete;
+  auto operator=(ScopeExit &&) -> ScopeExit & = delete;
+
+private:
+  [[no_unique_address]] Function function_;
+};
+
+template <class Function>
+ScopeExit(Function) -> ScopeExit<Function>;
+
+} // namespace Switch::detail
+
 using namespace Miracle;
 
 // NOLINTBEGIN(readability-identifier-naming)
@@ -599,7 +626,7 @@ auto drive(Task<Value> &task,
   if (not task.valid())
     return TaskDriveResult{.status = TaskDriveStatus::Empty};
 
-  const auto discardPending = std::scope_exit([&runLoop] -> void { runLoop.discardPending(); });
+  const auto discardPending = ScopeExit([&runLoop] -> void { runLoop.discardPending(); });
   runLoop.enqueue(task.handle());
 
   while (not task.done()) {

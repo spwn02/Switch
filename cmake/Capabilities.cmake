@@ -33,7 +33,7 @@ function(switch_check_capabilities)
   file(
     WRITE "${capability_source_dir}/direct_parameter_annotations.cxx"
     [=[
-#include <meta>
+import std;
 
 struct Marker final {
   int value;
@@ -68,9 +68,33 @@ auto main() -> int {
 ]=])
 
   file(
+    WRITE "${capability_source_dir}/aggregate_member_synthesis.cxx"
+    [=[
+import std;
+
+struct Storage;
+
+consteval {
+  std::meta::define_aggregate(
+      ^^Storage,
+      {
+          std::meta::data_member_spec(
+              ^^int,
+              std::meta::data_member_options{.name = "_"}),
+      });
+}
+
+auto main() -> int {
+  Storage storage{42};
+  (void)storage;
+  return 0;
+}
+]=])
+
+  file(
     WRITE "${capability_source_dir}/std_scope.cxx"
     [=[
-#include <scope>
+import std;
 
 auto main() -> int {
   bool invoked{};
@@ -94,9 +118,22 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(CMAKE_VERSION VERSION_LESS 4.5
+   AND NOT DEFINED CMAKE_EXPERIMENTAL_CXX_IMPORT_STD)
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD
+      "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+endif()
+
 project(SwitchCapabilities LANGUAGES CXX)
 
-foreach(capability IN ITEMS direct_parameter_annotations std_scope)
+if(NOT 26 IN_LIST CMAKE_CXX_COMPILER_IMPORT_STD)
+  message(FATAL_ERROR "Switch capability probes require C++26 import std support.")
+endif()
+
+foreach(capability IN ITEMS
+        direct_parameter_annotations
+        aggregate_member_synthesis
+        std_scope)
   add_executable(
     "capability_${capability}"
     "${CMAKE_CURRENT_SOURCE_DIR}/${capability}.cxx")
@@ -107,7 +144,8 @@ foreach(capability IN ITEMS direct_parameter_annotations std_scope)
     "capability_${capability}"
     PROPERTIES CXX_STANDARD 26
                CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
+               CXX_EXTENSIONS OFF
+               CXX_MODULE_STD ON)
 endforeach()
 ]=])
 
@@ -154,12 +192,20 @@ endforeach()
     message(FATAL_ERROR "${failure_message}")
   endif()
 
-  set(capability_names direct_parameter_annotations std_scope)
+  set(required_capability_names direct_parameter_annotations
+                                aggregate_member_synthesis)
+  set(compatibility_capability_names std_scope)
+  set(capability_names ${required_capability_names}
+                       ${compatibility_capability_names})
 
   set(capability_description_direct_parameter_annotations
       "C++26 direct annotations on reflected function parameters, including parameters_of, annotations_of, and extract"
   )
-  set(capability_description_std_scope "C++23 <scope> with std::scope_exit")
+  set(capability_description_aggregate_member_synthesis
+      "C++26 define_aggregate plus data_member_spec with explicit data_member_options"
+  )
+  set(capability_description_std_scope
+      "std::scope_exit exported through the named standard-library module")
 
   set(missing_capabilities)
 
@@ -191,11 +237,13 @@ endforeach()
       set(capability_json false)
       message(STATUS "Switch capability ${capability}: no")
 
-      list(
-        APPEND
-        missing_capabilities
-        "${capability}|${capability_description_${capability}}|${capability_log}"
-      )
+      if("${capability}" IN_LIST required_capability_names)
+        list(
+          APPEND
+          missing_capabilities
+          "${capability}|${capability_description_${capability}}|${capability_log}"
+        )
+      endif()
     endif()
 
     set("SWITCH_CAPABILITY_${capability_upper}"
@@ -215,17 +263,25 @@ endforeach()
       "  \"schemaVersion\": 1,\n"
       "  \"required\": {\n"
       "    \"direct_parameter_annotations\": ${capability_json_direct_parameter_annotations},\n"
+      "    \"aggregate_member_synthesis\": ${capability_json_aggregate_member_synthesis}\n"
+      "  },\n"
+      "  \"compatibilityManaged\": {\n"
       "    \"std_scope\": ${capability_json_std_scope}\n"
       "  }\n"
       "}\n")
 
   file(WRITE "${capability_report}" "${capability_json}")
 
+  if(NOT SWITCH_CAPABILITY_STD_SCOPE)
+    message(STATUS "Switch scope compatibility: internal scope-exit guard")
+  endif()
+
   if(missing_capabilities)
     string(
-      CONCAT failure_message
-             "Switch cannot build with the selected toolchain.\n\n"
-             "Missing capabilities required by the current master revision:\n")
+      CONCAT
+        failure_message "Switch cannot build with the selected toolchain.\n\n"
+        "Missing capabilities required by the current Switch source revision:\n"
+    )
 
     foreach(item IN LISTS missing_capabilities)
       string(REPLACE "|" ";" fields "${item}")
@@ -242,8 +298,10 @@ endforeach()
       failure_message
       "\n"
       "Miracle validates the shared C++26 foundation. These are the additional "
-      "capabilities required specifically by Switch's current source revision; "
-      "they are not an exhaustive C++26 conformance suite.\n\n"
+      "capabilities required specifically by Switch's current source revision. "
+      "Compatibility-managed capabilities may use internal implementations "
+      "without changing Switch's public API. These probes are not an exhaustive "
+      "C++26 conformance suite.\n\n"
       "Capability report: ${capability_report}")
 
     message(FATAL_ERROR "${failure_message}")

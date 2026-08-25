@@ -7,8 +7,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :FaultIsolation;
-
 using namespace Miracle;
 
 // NOLINTBEGIN

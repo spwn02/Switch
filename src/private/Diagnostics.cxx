@@ -3,9 +3,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :Annotations;
-import :Diagnostics;
-
 using namespace Miracle;
 
 namespace Switch {

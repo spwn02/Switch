@@ -3,13 +3,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :Diagnostics;
-import :Environment;
-import :Execution;
-import :Policies;
-import :Task;
-import :Worker;
-
 using namespace Miracle;
 
 namespace Switch::detail {
@@ -757,8 +750,9 @@ auto consumeWorkerRequest() -> Option<WorkerRequest> {
   const Option<String> captureProfile = requiredEnvironmentValue("SWITCH_TEST_WORKER_PROFILE");
   const Option<String> captureTiming = requiredEnvironmentValue("SWITCH_TEST_WORKER_TIMING");
 
-  if (not resultPath or not faultPath or not identifier or not plannedCase or not runIteration or not repeat or
-      not runSeed or not timeMode or not traceMode or not captureMemory or not captureProfile or not captureTiming)
+  if (not resultPath or not faultPath or not identifier or not plannedCase or not runIteration or
+      not repeat or not runSeed or not timeMode or not traceMode or not captureMemory or not captureProfile or
+      not captureTiming)
     return WorkerRequest{};
 
   const Option<u64> plannedCaseValue = parseU64(*plannedCase);
@@ -768,8 +762,7 @@ auto consumeWorkerRequest() -> Option<WorkerRequest> {
   const Option<u64> timeModeValue = parseU64(*timeMode);
   const Option<u64> traceModeValue = parseU64(*traceMode);
   if (not plannedCaseValue.has_value() or not runIterationValue.has_value() or not repeatValue.has_value() or
-      not runSeedValue.has_value() or
-      not timeModeValue.has_value() or not traceModeValue.has_value())
+      not runSeedValue.has_value() or not timeModeValue.has_value() or not traceModeValue.has_value())
     return WorkerRequest{};
 
   return WorkerRequest{
@@ -850,7 +843,8 @@ auto readWorkerJournal(const Path &path, const TestDescriptor &fallback) -> Work
       const u64 seed = payloadReader.pod<u64>();
       const usize iteration = static_cast<usize>(payloadReader.pod<u64>());
       const bool passed = payloadReader.pod<u8>() != 0;
-      static_cast<void>(payloadReader.pod<u8>()); // timeout is represented by diagnostics in detailed records.
+      static_cast<void>(
+          payloadReader.pod<u8>()); // timeout is represented by diagnostics in detailed records.
       TestExecution execution{
           .descriptor = fallback,
           .duration = duration,

@@ -137,15 +137,6 @@ target_sources(
          src/public/Runner.ixx
          src/public/Session.ixx
          src/public/Task.ixx
-  PRIVATE FILE_SET
-          switch_internal_modules
-          TYPE
-          CXX_MODULES
-          BASE_DIRS
-          "${CMAKE_CURRENT_SOURCE_DIR}/src/internal"
-          FILES
-          src/internal/FaultIsolation.ixx
-          src/internal/Worker.ixx
   PRIVATE src/private/Context.cxx
           src/private/Diagnostics.cxx
           src/private/Discovery.cxx
@@ -165,18 +156,14 @@ target_sources(
 target_link_libraries(Switch PUBLIC Miracle::Miracle)
 
 set(switch_private_warning_options
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Wunused-local-typedefs
-    -Wunused-result
-    -Wwrite-strings
-    -Wno-missing-designated-field-initializers)
+    -Wall -Wextra -Wpedantic -Wunused-local-typedefs -Wunused-result
+    -Wwrite-strings)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   list(
     APPEND
     switch_private_warning_options
+    -Wno-missing-field-initializers
     -Wconversion-null
     -Woverlength-strings
     -Wpointer-arith
@@ -186,6 +173,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   list(
     APPEND
     switch_private_warning_options
+    -Wno-missing-designated-field-initializers
     -Woverlength-strings
     -Wpointer-arith
     -Wvarargs

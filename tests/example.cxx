@@ -8,7 +8,7 @@ using namespace Switch;
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 namespace Tests::example {
 
-[[ = test, = group("example") ]] auto foo(const Context[[= context]] & ctx) -> void {
+[[ = test, = group("example") ]] auto foo(const Context &ctx [[= context]]) -> void {
   Array<usize, 10> array = ctx.resources.allocate<Array<usize, 10>>();
   std::ranges::iota(array, 1);
   check(contains(array, 10));

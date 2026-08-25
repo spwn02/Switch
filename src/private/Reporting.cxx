@@ -3,11 +3,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :Diagnostics;
-import :Execution;
-import :Render;
-import :Reporting;
-
 using namespace Miracle;
 
 namespace Switch {
@@ -233,11 +228,11 @@ constexpr inline usize progressBarWidth{80};
 /// Builds the presentation-independent report tree from physical test executions.
 class RunReportBuilder final {
 public:
-  explicit RunReportBuilder(usize expectedCases) {
+  [[maybe_unused]] explicit RunReportBuilder(usize expectedCases) {
     report_.cases.reserve(expectedCases);
   }
 
-  auto operator()(const TestExecution &execution) -> void {
+  [[maybe_unused]] auto operator()(const TestExecution &execution) -> void {
     const auto existing = std::ranges::find_if(
         report_.cases, [&execution](const TestCaseResult &testCase) constexpr noexcept -> bool {
           return testCase.descriptor.identifier == execution.descriptor.identifier;
@@ -260,7 +255,7 @@ public:
     existing->attempts.push_back(attempt);
   }
 
-  [[nodiscard]] auto finish() && -> RunReport {
+  [[nodiscard, maybe_unused]] auto finish() && -> RunReport {
     std::ranges::for_each(report_.cases, &RunReportBuilder::finalizeCase);
     return std::move(report_);
   }
@@ -329,8 +324,7 @@ auto renderSummary(const TestSummary &summary,
     const RunReport &report,
     bool useColor,
     bool showProgress,
-    std::ostream &output)
-    -> void {
+    std::ostream &output) -> void {
   if (showProgress and summary.testCount != 0) {
     const usize passedWidth = summary.passedCaseCount * progressBarWidth / summary.caseCount;
     const usize failedWidth = progressBarWidth - passedWidth;
@@ -460,8 +454,8 @@ auto CaseAccumulator::append(AttemptOutcome outcome) -> void {
   } else if (outcome.passed and retainSuccessful_) {
     // Keep one successful representative for the ordinary live row. Repeated cases use the incremental
     // measurement summary instead of rendering this representative as a physical-attempt row.
-    if (not std::ranges::any_of(result_.attempts,
-            [](const TestAttempt &attempt) { return attempt.execution.passed(); })) {
+    if (not std::ranges::any_of(
+            result_.attempts, [](const TestAttempt &attempt) { return attempt.execution.passed(); })) {
       TestExecution execution{
           .descriptor = result_.descriptor,
           .duration = outcome.duration,
@@ -521,8 +515,9 @@ auto CaseAccumulator::appendAggregate(const BatchExecutionContext &batch) -> voi
 
 auto CaseAccumulator::finish() && -> TestCaseResult {
   if (sampleCount_ != 0 and
-      (aggregateTiming_ or (retainSuccessful_ and attemptCount_ > 1) or result_.descriptor.policy.repeat > 1 or
-          result_.descriptor.policy.warmup != 0 or result_.descriptor.policy.retry != 0)) {
+      (aggregateTiming_ or (retainSuccessful_ and attemptCount_ > 1) or
+          result_.descriptor.policy.repeat > 1 or result_.descriptor.policy.warmup != 0 or
+          result_.descriptor.policy.retry != 0)) {
     result_.measurement = MeasurementSummary{
         .sampleCount = sampleCount_,
         .total = totalDuration_,
@@ -587,12 +582,10 @@ auto RunAccumulator::completeCase(StringView identifier) -> void {
   if (concurrent_)
     lock.lock();
 
-  auto expected = std::ranges::find_if(expectedCompletions_, [identifier](const Pair<String, usize> &item) {
-    return item.first == identifier;
-  });
-  auto observed = std::ranges::find_if(observedCompletions_, [identifier](const Pair<String, usize> &item) {
-    return item.first == identifier;
-  });
+  auto expected = std::ranges::find_if(expectedCompletions_,
+      [identifier](const Pair<String, usize> &item) { return item.first == identifier; });
+  auto observed = std::ranges::find_if(observedCompletions_,
+      [identifier](const Pair<String, usize> &item) { return item.first == identifier; });
   if (observed == observedCompletions_.end()) {
     observedCompletions_.push_back(Pair<String, usize>{String{identifier}, 1});
     observed = std::prev(observedCompletions_.end());
@@ -602,9 +595,8 @@ auto RunAccumulator::completeCase(StringView identifier) -> void {
   if (expected == expectedCompletions_.end() or observed->second < expected->second)
     return;
 
-  auto existing = std::ranges::find_if(cases_, [identifier](const UPtr<CaseAccumulator> &candidate) {
-    return candidate->identifier() == identifier;
-  });
+  auto existing = std::ranges::find_if(cases_,
+      [identifier](const UPtr<CaseAccumulator> &candidate) { return candidate->identifier() == identifier; });
   if (existing == cases_.end())
     return;
   TestCaseResult result = std::move(**existing).finish();
@@ -793,8 +785,8 @@ auto Reporter::report(const RunReport &report, std::ostream &output) const -> Te
           state.identityWidth = std::max(state.identityWidth,
               std::format("tests {}", report.cases[row].descriptor.identifier).size() + 3);
         output << String(state.identityWidth, ' ')
-                << paint("samples   time │ min ├─[q1 · med · q3]─┤ max │ mean · deviation", dim, useColor)
-                << '\n';
+               << paint("samples   time │ min ├─[q1 · med · q3]─┤ max │ mean · deviation", dim, useColor)
+               << '\n';
       }
     }
     for (; index < end; ++index)
@@ -857,14 +849,12 @@ auto Reporter::renderLiveCase(const TestCaseResult &testCase, std::ostream &outp
       .attempts = Vec<TestAttempt>{*representative},
       .failedCase = testCase.failedCase,
   };
-  summaryCase.attempts.front().execution.duration = std::ranges::fold_left(
-      testCase.attempts,
+  summaryCase.attempts.front().execution.duration = std::ranges::fold_left(testCase.attempts,
       std::chrono::steady_clock::duration{},
       [](std::chrono::steady_clock::duration total, const TestAttempt &attempt) {
         return total + attempt.execution.duration;
       });
-  summaryCase.attempts.front().execution.wallDuration = std::ranges::fold_left(
-      testCase.attempts,
+  summaryCase.attempts.front().execution.wallDuration = std::ranges::fold_left(testCase.attempts,
       std::chrono::steady_clock::duration{},
       [](std::chrono::steady_clock::duration total, const TestAttempt &attempt) {
         return total + attempt.execution.wallDuration;

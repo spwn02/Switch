@@ -1,6 +1,7 @@
 import std;
 import Miracle;
 import Switch;
+import SwitchTests.Support;
 
 using namespace Miracle;
 using namespace Switch;
@@ -123,7 +124,7 @@ auto observePeak(usize value) -> void {
 ]] auto runsConcurrently(u32 /*ignored*/) -> Task<void> {
   const usize current = active.fetch_add(1, std::memory_order_relaxed) + 1;
   observePeak(current);
-  const auto cleanup = std::scope_exit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
+  const auto cleanup = Tests::support::ScopeExit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
 
   co_await yield();
   std::this_thread::sleep_for(std::chrono::milliseconds{10});
@@ -179,7 +180,7 @@ auto reset() -> void {
   = Case{2},
   = Case{3},
   = Case{4}
-]] auto resolvesFixtureScopesInParallel(u32[[= fromCase]] expectedCase,
+]] auto resolvesFixtureScopesInParallel(u32 expectedCase [[= fromCase]],
     const SharedFixture &shared,                         // NOLINT
     const CaseFixture &caseFixtureValue) -> Task<void> { // NOLINT
   co_await sleepFor(oneHour);
@@ -241,7 +242,7 @@ auto observePeak(usize value) -> void {
 auto runConcurrently() -> void {
   const usize current = active.fetch_add(1, std::memory_order_relaxed) + 1;
   observePeak(current);
-  const auto cleanup = std::scope_exit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
+  const auto cleanup = Tests::support::ScopeExit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
   const auto deadline = std::chrono::steady_clock::now() + overlapTimeout;
 
   while (active.load(std::memory_order_relaxed) < expectedWorkers.load(std::memory_order_relaxed) and

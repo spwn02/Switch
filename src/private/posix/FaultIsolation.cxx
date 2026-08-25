@@ -4,6 +4,7 @@ module;
 #include <csignal>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <sys/auxv.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <ucontext.h>
@@ -14,7 +15,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :FaultIsolation;
 
 using namespace Miracle;
 
@@ -120,11 +120,16 @@ auto executablePath() -> Result<Path> {
   constexpr usize kb4{4096};
   Array<char, kb4> buffer{};
   const auto size = static_cast<isize>(::readlink("/proc/self/exe", buffer.data(), buffer.size() - 1));
-  if (size <= 0)
-    return bail({"Switch could not resolve /proc/self/exe"});
+  if (size > 0) {
+    buffer.at(static_cast<usize>(size)) = '\0';
+    return Path{buffer.data()};
+  }
 
-  buffer.at(static_cast<usize>(size)) = '\0';
-  return Path{buffer.data()};
+  const auto executable = reinterpret_cast<const char *>(::getauxval(AT_EXECFN));
+  if (executable != nullptr and executable[0] != '\0')
+    return Path{executable};
+
+  return bail({"Switch could not resolve the current executable path"});
 }
 
 auto launchWorker(const WorkerLaunch &launch) -> WorkerOutcome {
@@ -231,7 +236,7 @@ auto readFaultRecord(const Path &path) noexcept -> Option<NativeFault> {
     return None;
 
   const auto closeDescriptor =
-      std::scope_exit([descriptor] noexcept -> void { static_cast<void>(::close(descriptor)); });
+      ScopeGuard([descriptor] noexcept -> void { static_cast<void>(::close(descriptor)); });
   FaultRecord record{};
   Byte *data = reinterpret_cast<Byte *>(std::addressof(record));
   usize remaining = sizeof(record);

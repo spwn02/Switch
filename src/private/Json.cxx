@@ -3,8 +3,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :Json;
-
 using namespace Miracle;
 
 namespace Switch {
@@ -494,26 +492,32 @@ auto writeMeasurement(JsonWriter &writer, const Option<MeasurementSummary> &meas
   writer.field("samples", [&writer, &measurement] -> void { writer.number(measurement->sampleCount); });
   writer.field("total_ns",
       [&writer, &measurement] -> void { writer.number(durationNanoseconds(measurement->total)); });
-  writer.field("minimum_ns",
-      [&writer, &measurement] -> void { measurement->distributionAvailable
-          ? writer.number(durationNanoseconds(measurement->minimum)) : writer.nullValue(); });
-  writer.field("maximum_ns",
-      [&writer, &measurement] -> void { measurement->distributionAvailable
-          ? writer.number(durationNanoseconds(measurement->maximum)) : writer.nullValue(); });
+  writer.field("minimum_ns", [&writer, &measurement] -> void {
+    measurement->distributionAvailable ? writer.number(durationNanoseconds(measurement->minimum))
+                                       : writer.nullValue();
+  });
+  writer.field("maximum_ns", [&writer, &measurement] -> void {
+    measurement->distributionAvailable ? writer.number(durationNanoseconds(measurement->maximum))
+                                       : writer.nullValue();
+  });
   writer.field(
       "mean_ns", [&writer, &measurement] -> void { writer.number(durationNanoseconds(measurement->mean)); });
-  writer.field("first_quartile_ns",
-      [&writer, &measurement] -> void { measurement->quantilesAvailable
-          ? writer.number(durationNanoseconds(measurement->firstQuartile)) : writer.nullValue(); });
-  writer.field("median_ns",
-      [&writer, &measurement] -> void { measurement->quantilesAvailable
-          ? writer.number(durationNanoseconds(measurement->median)) : writer.nullValue(); });
-  writer.field("third_quartile_ns",
-      [&writer, &measurement] -> void { measurement->quantilesAvailable
-          ? writer.number(durationNanoseconds(measurement->thirdQuartile)) : writer.nullValue(); });
-  writer.field("deviation_ns",
-      [&writer, &measurement] -> void { measurement->distributionAvailable
-          ? writer.number(durationNanoseconds(measurement->deviation)) : writer.nullValue(); });
+  writer.field("first_quartile_ns", [&writer, &measurement] -> void {
+    measurement->quantilesAvailable ? writer.number(durationNanoseconds(measurement->firstQuartile))
+                                    : writer.nullValue();
+  });
+  writer.field("median_ns", [&writer, &measurement] -> void {
+    measurement->quantilesAvailable ? writer.number(durationNanoseconds(measurement->median))
+                                    : writer.nullValue();
+  });
+  writer.field("third_quartile_ns", [&writer, &measurement] -> void {
+    measurement->quantilesAvailable ? writer.number(durationNanoseconds(measurement->thirdQuartile))
+                                    : writer.nullValue();
+  });
+  writer.field("deviation_ns", [&writer, &measurement] -> void {
+    measurement->distributionAvailable ? writer.number(durationNanoseconds(measurement->deviation))
+                                       : writer.nullValue();
+  });
   writer.field("approximate", [&writer, &measurement] -> void { writer.boolean(measurement->approximate); });
   writer.field("quantiles_available",
       [&writer, &measurement] -> void { writer.boolean(measurement->quantilesAvailable); });
@@ -628,8 +632,8 @@ public:
     writer.field("retention", [&writer, &report] -> void { writer.text(debug::enumName(report.retention)); });
     writer.field(
         "retained_attempt_count", [&writer, &report] -> void { writer.number(report.retainedAttemptCount); });
-    writer.field(
-        "suppressed_attempt_count", [&writer, &report] -> void { writer.number(report.suppressedAttemptCount); });
+    writer.field("suppressed_attempt_count",
+        [&writer, &report] -> void { writer.number(report.suppressedAttemptCount); });
     writer.field("selection", [&writer, &report] -> void {
       writer.beginObject();
       writer.field("include", [&writer, &report] -> void {

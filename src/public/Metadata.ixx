@@ -144,11 +144,8 @@ struct ArgumentTraits<Argument<Name, Properties...>> final {
 
 template <std::meta::info Parameter, class ArgumentType>
 consteval auto argumentTargetsParameter() -> bool {
-  return ArgumentTraits<ArgumentType>::name() == meta::identifier<Parameter>;
+  return ArgumentTraits<ArgumentType>::name() == std::meta::identifier_of(Parameter);
 }
-
-template <std::meta::info Parameter, class ArgumentType>
-inline constexpr bool argument_targets_parameter_v = argumentTargetsParameter<Parameter, ArgumentType>();
 
 /// Identifies the source used to bind one reflected test parameter.
 enum class ParameterSource : u8 {
@@ -174,86 +171,241 @@ consteval auto isCaseAnnotation() -> bool {
   return has_template_arguments(type) and template_of(type) == ^^Case;
 }
 
-template <std::meta::info Annotation>
-inline constexpr bool is_case_annotation_v = isCaseAnnotation<Annotation>();
+template <std::meta::info Function, usize AnnotationIndex = 0>
+consteval auto caseAnnotationCount() -> usize {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex == count) {
+    return 0;
+  } else {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
+    return static_cast<usize>(isCaseAnnotation<annotation>()) +
+           caseAnnotationCount<Function, AnnotationIndex + 1>();
+  }
+}
+
+template <std::meta::info Function, usize Size, usize AnnotationIndex = 0>
+consteval auto fillCaseAnnotations(std::array<std::meta::info, Size> &result, usize &index) -> void {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex != count) {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
+    if constexpr (isCaseAnnotation<annotation>())
+      result[index++] = annotation;
+
+    fillCaseAnnotations<Function, Size, AnnotationIndex + 1>(result, index);
+  }
+}
 
 template <std::meta::info Function>
 consteval auto makeCaseAnnotations() -> auto {
-  Vec<std::meta::info> result{};
+  constexpr usize count = caseAnnotationCount<Function>();
+  std::array<std::meta::info, count> result{};
+  usize index{};
+  fillCaseAnnotations<Function>(result, index);
+  return result;
+}
 
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
-    if constexpr (is_case_annotation_v<annotation>)
-      result.emplace_back(annotation);
+template <std::meta::info Function, usize AnnotationIndex = 0>
+consteval auto argumentAnnotationCount() -> usize {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex == count) {
+    return 0;
+  } else {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
+    using Annotation = meta::TypeObject<annotation>;
+    return static_cast<usize>(is_argument_v<Annotation>) +
+           argumentAnnotationCount<Function, AnnotationIndex + 1>();
   }
+}
 
-  return std::define_static_array(result);
+template <std::meta::info Function, usize Size, usize AnnotationIndex = 0>
+consteval auto fillArgumentAnnotations(std::array<std::meta::info, Size> &result, usize &index) -> void {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex != count) {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
+    using Annotation = meta::TypeObject<annotation>;
+    if constexpr (is_argument_v<Annotation>)
+      result[index++] = annotation;
+
+    fillArgumentAnnotations<Function, Size, AnnotationIndex + 1>(result, index);
+  }
 }
 
 template <std::meta::info Function>
 consteval auto makeArgumentAnnotations() -> auto {
-  Vec<std::meta::info> result{};
+  constexpr usize count = argumentAnnotationCount<Function>();
+  std::array<std::meta::info, count> result{};
+  usize index{};
+  fillArgumentAnnotations<Function>(result, index);
+  return result;
+}
 
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
+template <std::meta::info Function, template <class> class Predicate, usize AnnotationIndex = 0>
+consteval auto typedAnnotationCount() -> usize {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex == count) {
+    return 0;
+  } else {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
     using Annotation = meta::TypeObject<annotation>;
-
-    if constexpr (is_argument_v<Annotation>)
-      result.emplace_back(annotation);
+    return static_cast<usize>(Predicate<Annotation>::value) +
+           typedAnnotationCount<Function, Predicate, AnnotationIndex + 1>();
   }
+}
 
-  return std::define_static_array(result);
+template <std::meta::info Function,
+    template <class> class Predicate,
+    usize Size,
+    usize AnnotationIndex = 0>
+consteval auto fillTypedAnnotations(std::array<std::meta::info, Size> &result, usize &index) -> void {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex != count) {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
+    using Annotation = meta::TypeObject<annotation>;
+    if constexpr (Predicate<Annotation>::value)
+      result[index++] = annotation;
+
+    fillTypedAnnotations<Function, Predicate, Size, AnnotationIndex + 1>(result, index);
+  }
 }
 
 template <std::meta::info Function, template <class> class Predicate>
 consteval auto makeTypedAnnotations() -> auto {
-  Vec<std::meta::info> result{};
+  constexpr usize count = typedAnnotationCount<Function, Predicate>();
+  std::array<std::meta::info, count> result{};
+  usize index{};
+  fillTypedAnnotations<Function, Predicate>(result, index);
+  return result;
+}
 
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
-    using Annotation = meta::TypeObject<annotation>;
-
-    if constexpr (Predicate<Annotation>::value)
-      result.emplace_back(annotation);
+template <std::meta::info Function, usize ParameterIndex = 0, usize AnnotationIndex = 0>
+consteval auto directParameterPropertyCount() -> usize {
+  constexpr usize parameterCount = static_cast<usize>(std::meta::parameters_of(Function).size());
+  if constexpr (ParameterIndex == parameterCount) {
+    return 0;
+  } else {
+    constexpr std::meta::info parameter = std::meta::parameters_of(Function)[ParameterIndex];
+    constexpr usize annotationCount = static_cast<usize>(std::meta::annotations_of(parameter).size());
+    if constexpr (AnnotationIndex == annotationCount) {
+      return directParameterPropertyCount<Function, ParameterIndex + 1, 0>();
+    } else {
+      constexpr std::meta::info annotation = std::meta::annotations_of(parameter)[AnnotationIndex];
+      using Annotation = meta::TypeObject<annotation>;
+      return static_cast<usize>(is_supported_property_v<Annotation>) +
+             directParameterPropertyCount<Function, ParameterIndex, AnnotationIndex + 1>();
+    }
   }
+}
 
-  return std::define_static_array(result);
+template <std::meta::info Function,
+    std::meta::info Annotation,
+    class AnnotationType,
+    usize ParameterIndex = 0>
+consteval auto legacyParameterPropertyCount() -> usize {
+  constexpr usize count = static_cast<usize>(std::meta::parameters_of(Function).size());
+  if constexpr (ParameterIndex == count) {
+    return 0;
+  } else {
+    constexpr std::meta::info parameter = std::meta::parameters_of(Function)[ParameterIndex];
+    return static_cast<usize>(argumentTargetsParameter<parameter, AnnotationType>()) +
+           legacyParameterPropertyCount<Function, Annotation, AnnotationType, ParameterIndex + 1>();
+  }
+}
+
+template <std::meta::info Function, usize AnnotationIndex = 0>
+consteval auto legacyParameterPropertiesCount() -> usize {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex == count) {
+    return 0;
+  } else {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
+    using Annotation = meta::TypeObject<annotation>;
+    if constexpr (is_argument_v<Annotation>) {
+      return legacyParameterPropertyCount<Function, annotation, Annotation>() +
+             legacyParameterPropertiesCount<Function, AnnotationIndex + 1>();
+    } else {
+      return legacyParameterPropertiesCount<Function, AnnotationIndex + 1>();
+    }
+  }
+}
+
+template <std::meta::info Function,
+    usize Size,
+    usize ParameterIndex = 0,
+    usize AnnotationIndex = 0>
+consteval auto fillDirectParameterProperties(std::array<ParameterProperty, Size> &result, usize &index)
+    -> void {
+  constexpr usize parameterCount = static_cast<usize>(std::meta::parameters_of(Function).size());
+  if constexpr (ParameterIndex != parameterCount) {
+    constexpr std::meta::info parameter = std::meta::parameters_of(Function)[ParameterIndex];
+    constexpr usize annotationCount = static_cast<usize>(std::meta::annotations_of(parameter).size());
+    if constexpr (AnnotationIndex == annotationCount) {
+      fillDirectParameterProperties<Function, Size, ParameterIndex + 1, 0>(result, index);
+    } else {
+      constexpr std::meta::info annotation = std::meta::annotations_of(parameter)[AnnotationIndex];
+      using Annotation = meta::TypeObject<annotation>;
+      if constexpr (is_supported_property_v<Annotation>)
+        result[index++] = ParameterProperty{parameter, annotation, false};
+
+      fillDirectParameterProperties<Function, Size, ParameterIndex, AnnotationIndex + 1>(result, index);
+    }
+  }
+}
+
+template <std::meta::info Function,
+    std::meta::info Annotation,
+    class AnnotationType,
+    usize Size,
+    usize ParameterIndex = 0>
+consteval auto fillLegacyParameterBinding(std::array<ParameterProperty, Size> &result, usize &index) -> void {
+  constexpr usize count = static_cast<usize>(std::meta::parameters_of(Function).size());
+  if constexpr (ParameterIndex != count) {
+    constexpr std::meta::info parameter = std::meta::parameters_of(Function)[ParameterIndex];
+    if constexpr (argumentTargetsParameter<parameter, AnnotationType>())
+      result[index++] = ParameterProperty{parameter, Annotation, true};
+
+    fillLegacyParameterBinding<Function, Annotation, AnnotationType, Size, ParameterIndex + 1>(result, index);
+  }
+}
+
+template <std::meta::info Function, usize Size, usize AnnotationIndex = 0>
+consteval auto fillLegacyParameterProperties(std::array<ParameterProperty, Size> &result, usize &index)
+    -> void {
+  constexpr usize count = static_cast<usize>(std::meta::annotations_of(Function).size());
+  if constexpr (AnnotationIndex != count) {
+    constexpr std::meta::info annotation = std::meta::annotations_of(Function)[AnnotationIndex];
+    using Annotation = meta::TypeObject<annotation>;
+    if constexpr (is_argument_v<Annotation>)
+      fillLegacyParameterBinding<Function, annotation, Annotation>(result, index);
+
+    fillLegacyParameterProperties<Function, Size, AnnotationIndex + 1>(result, index);
+  }
 }
 
 template <std::meta::info Function>
 consteval auto makeParameterProperties() -> auto {
-  Vec<ParameterProperty> result{};
-
-  template for (constexpr std::meta::info parameter : meta::parameters<Function>) {
-    template for (constexpr std::meta::info annotation : meta::annotations<parameter>) {
-      using Annotation = meta::TypeObject<annotation>;
-
-      if constexpr (is_supported_property_v<Annotation>)
-        result.emplace_back(parameter, annotation, false);
-    }
-  }
-
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
-    using Annotation = meta::TypeObject<annotation>;
-
-    if constexpr (is_argument_v<Annotation>) {
-      template for (constexpr std::meta::info parameter : meta::parameters<Function>) {
-        if constexpr (argumentTargetsParameter<parameter, Annotation>()) {
-          result.emplace_back(parameter, annotation, true);
-        }
-      }
-    }
-  }
-
-  return std::define_static_array(result);
+  constexpr usize count = directParameterPropertyCount<Function>() + legacyParameterPropertiesCount<Function>();
+  std::array<ParameterProperty, count> result{};
+  usize index{};
+  fillDirectParameterProperties<Function>(result, index);
+  fillLegacyParameterProperties<Function>(result, index);
+  return result;
 }
 
 /// Caches all normalized reflection inputs for one function.
 ///
-/// Reflection APIs are queried here exactly once per function. Providers, fixtures, and discovery consume
-/// these stable arrays instead of repeatedly asking the compiler for the same function annotations and
-/// parameters. `ParameterProperty` unifies direct annotations with legacy `arg<...>` data.
+/// GCC cannot currently persist consumer-owned reflection ranges through
+/// `define_static_array`. Exact-size `std::array` values built by indexed
+/// consteval queries preserve the same normalized metadata interface without
+/// materializing a compiler-owned reflection range across module boundaries.
 template <std::meta::info Function>
 struct ReflectedFunctionMetadata final {
-  static constexpr auto &annotations = meta::annotations<Function>;
-  static constexpr auto &parameters = meta::parameters<Function>;
+  static constexpr usize parameterCount = static_cast<usize>(std::meta::parameters_of(Function).size());
+
+  template <usize Index>
+  [[nodiscard]] static consteval auto parameter() -> std::meta::info {
+    static_assert(Index < parameterCount);
+    return std::meta::parameters_of(Function)[Index];
+  }
   static constexpr auto cases = makeCaseAnnotations<Function>();
   static constexpr auto arguments = makeArgumentAnnotations<Function>();
   static constexpr auto descriptions = makeTypedAnnotations<Function, IsDescription>();
@@ -303,14 +455,18 @@ consteval auto argumentBindingCount() -> usize {
   return count;
 }
 
-template <std::meta::info Function, class ArgumentType>
+template <std::meta::info Function, class ArgumentType, usize ParameterIndex = 0>
 consteval auto argumentTargetsFunctionParameter() -> bool {
-  template for (constexpr std::meta::info parameter : ReflectedFunctionMetadata<Function>::parameters) {
+  constexpr usize count = static_cast<usize>(std::meta::parameters_of(Function).size());
+  if constexpr (ParameterIndex == count) {
+    return false;
+  } else {
+    constexpr std::meta::info parameter = std::meta::parameters_of(Function)[ParameterIndex];
     if constexpr (argumentTargetsParameter<parameter, ArgumentType>())
       return true;
-  }
 
-  return false;
+    return argumentTargetsFunctionParameter<Function, ArgumentType, ParameterIndex + 1>();
+  }
 }
 
 template <std::meta::info Function, std::meta::info Parameter, template <class> class Predicate>

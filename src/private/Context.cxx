@@ -1,7 +1,5 @@
 module Switch;
 
-import :Context;
-
 import std;
 import Miracle;
 

@@ -2,6 +2,7 @@ import std;
 
 import Miracle;
 import Switch;
+import SwitchTests.Support;
 
 using namespace Miracle;
 using namespace Switch;
@@ -12,7 +13,7 @@ namespace Tests::providers {
 namespace ProviderSubjects {
 
 [[ = test, = group("framework"), = tag("providers", "subjects") ]] auto optionalValues(
-    Option<const char *>[[= values(None, " ", "    ")]] input) -> void {
+    Option<const char *> input [[= values(None, " ", "    ")]]) -> void {
   if (input)
     require(StringView{*input}.find(' ') == 0_exp);
   else
@@ -20,31 +21,31 @@ namespace ProviderSubjects {
 }
 
 [[ = test, = group("framework"), = tag("providers", "subjects"), = Case{2}, = Case{5} ]] auto caseAndValues(
-    u32[[= fromCase]] base,
-    u32[[= values(10, 20)]] offset) -> void {
+    u32 base [[= fromCase]],
+    u32 offset [[= values(10, 20)]]) -> void {
   require(base > 0_exp);
   require(offset == 10_exp or offset == 20_exp);
 }
 
 [[ = test, = group("framework"), = tag("providers", "subjects") ]] auto receivesProviderContext(
-    const Context[[= context]] & ctx,
-    u32[[= values(3, 7)]] value) -> void {
+    const Context &ctx [[= context]],
+    u32 value [[= values(3, 7)]]) -> void {
   require(ctx.testCase < 2_exp);
   require(value == 3_exp or value == 7_exp);
 }
 
 [[ = test, = group("framework"), = tag("providers", "subjects") ]] auto receivesFile(
-    const Path[[= files(__FILE__)]] & path) -> void {
+    const Path &path [[= files(__FILE__)]]) -> void {
   require(path == Path{__FILE__});
 }
 
 [[ = test, = group("framework"), = tag("providers", "subjects") ]] auto receivesNoFiles(
-    const Path[[= files("__switch_missing_provider__/**/*.md")]] & path) -> void {
+    const Path &path [[= files("__switch_missing_provider__/**/*.md")]]) -> void {
   require(path.empty());
 }
 
 [[ = test, = group("framework"), = tag("providers", "subjects") ]] auto receivesDirectFileModifiers(
-    const Path[[ = files(__FILE__), = exclude("__switch_never_excluded__"), = includeDotFiles ]] & path)
+    const Path &path [[ = files(__FILE__), = exclude("__switch_never_excluded__"), = includeDotFiles ]])
     -> void {
   require(path == Path{__FILE__});
 }
@@ -123,7 +124,7 @@ auto writeFile(const Path &path) -> void {
 
 [[ = test, = group("framework"), = tag("providers") ]] auto matchesAndFiltersFiles() -> void {
   const Path root = temporaryDirectory();
-  const auto cleanup = std::scope_exit([&root] -> void {
+  const auto cleanup = Tests::support::ScopeExit([&root] -> void {
     std::error_code error;
     std::filesystem::remove_all(root, error);
   });

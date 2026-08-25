@@ -3,8 +3,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :Resources;
-
 using namespace Miracle;
 
 namespace Switch {

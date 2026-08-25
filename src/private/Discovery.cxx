@@ -3,11 +3,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :Discovery;
-import :FaultIsolation;
-import :Worker;
-import :Session;
-
 using namespace Miracle;
 
 namespace Switch {
@@ -257,10 +252,8 @@ auto runAll(Reporter &reporter, std::ostream &output, RunOptions options) -> Run
   return runAll(reporter, output, {}, options);
 }
 
-auto runAll(Reporter &reporter,
-    std::ostream &output,
-    TestSelection selection,
-    RunOptions options) -> RunReport {
+auto runAll(Reporter &reporter, std::ostream &output, TestSelection selection, RunOptions options)
+    -> RunReport {
   const Option<detail::WorkerRequest> worker = detail::consumeWorkerRequest();
   if (worker)
     static_cast<void>(detail::isolation::installWorkerFaultHandler(worker->faultPath));
@@ -288,9 +281,8 @@ auto runAll(Reporter &reporter,
       },
       options.captureTiming != CapturePolicy::None};
   reporter.beginLive(output, options.captureTiming != CapturePolicy::None);
-  accumulator.setCompletionObserver([&reporter](const TestCaseResult &testCase) {
-    reporter.consumeLive(testCase);
-  });
+  accumulator.setCompletionObserver(
+      [&reporter](const TestCaseResult &testCase) { reporter.consumeLive(testCase); });
   static_cast<void>(detail::executePlannedCases(session, options, accumulator));
   RunReport report = std::move(accumulator).finish();
   reporter.finishLive(report);

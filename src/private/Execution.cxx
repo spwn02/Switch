@@ -3,11 +3,6 @@ module Switch;
 import std;
 import Miracle;
 
-import :Diagnostics;
-import :Environment;
-import :Execution;
-import :Policies;
-
 using namespace Miracle;
 
 namespace Switch {

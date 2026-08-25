@@ -11,7 +11,7 @@ namespace Tests::measurements {
 namespace Subjects {
 
 [[ = test, = group("framework"), = tag("measurements", "samples"), = repeat(3), = warmup(1) ]] auto
-collectsSamples(const Context[[= context]] & context) -> void {
+collectsSamples(const Context &context [[= context]]) -> void {
   if (context.warmup)
     return;
 
@@ -25,7 +25,7 @@ collectsSamples(const Context[[= context]] & context) -> void {
   = tag("measurements", "retry"),
   = timeout(std::chrono::milliseconds{0}),
   = retry(1)
-]] auto retriesTimeouts(const Context[[= context]] & context) -> Task<void> { // NOLINT
+]] auto retriesTimeouts(const Context &context [[= context]]) -> Task<void> { // NOLINT
   if (context.retry == 0) {
     co_await sleepFor(std::chrono::hours{1});
     co_await yield();

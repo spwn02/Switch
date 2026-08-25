@@ -22,13 +22,13 @@ auto reset() -> void {
 }
 
 [[ = test, = group("framework"), = tag("runner", "subjects", "repeat") ]] auto first(
-    const Context[[= context]] & context) -> void {
+    const Context &context [[= context]]) -> void {
   observedSeeds.push_back(context.seed);
   observedIterations.push_back(context.iteration);
 }
 
 [[ = test, = group("framework"), = tag("runner", "subjects", "repeat") ]] auto second(
-    const Context[[= context]] & context) -> void {
+    const Context &context [[= context]]) -> void {
   observedSeeds.push_back(context.seed);
   observedIterations.push_back(context.iteration);
 }
@@ -100,7 +100,7 @@ namespace ThroughputFailureSubjects {
 inline constexpr usize failingIteration{37};
 
 [[ = test, = group("framework"), = tag("runner", "subjects", "throughput") ]] auto failsAtIndex(
-    const Context[[= context]] & context) -> void {
+    const Context &context [[= context]]) -> void {
   check(context.iteration != failingIteration);
 }
 

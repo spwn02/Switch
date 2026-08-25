@@ -215,8 +215,8 @@ template <std::meta::info Function>
 auto policyOf() -> TestPolicy {
   static_assert(shouldPanicCount<Function>() <= 1,
       "Switch tests may declare at most one [[= shouldPanic(...)]] annotation.");
-  static_assert(timeoutCount<Function>() <= 1,
-      "Switch tests may declare at most one [[= timeout(...)]] annotation.");
+  static_assert(
+      timeoutCount<Function>() <= 1, "Switch tests may declare at most one [[= timeout(...)]] annotation.");
   static_assert(
       repeatCount<Function>() <= 1, "Switch tests may declare at most one [[= repeat(...)]] annotation.");
   static_assert(
@@ -262,7 +262,11 @@ template <std::meta::info Function>
 auto makeTestDescriptor(usize testCase, StringView caseDescription = {}, StringView providerDescription = {})
     -> TestDescriptor {
   constexpr StringView name = meta::identifier<Function>;
-  String identifier{qualifiedNameOf<Function>()};
+  constexpr StringView qualifiedName = qualifiedNameOf<Function>();
+  constexpr std::source_location location = std::meta::source_location_of(Function);
+  constexpr StringView description = descriptionOf<Function>();
+
+  String identifier{qualifiedName};
 
   if (not caseDescription.empty() or not providerDescription.empty()) {
     identifier.append("(");
@@ -278,14 +282,17 @@ auto makeTestDescriptor(usize testCase, StringView caseDescription = {}, StringV
     identifier.append(")");
   }
 
+  TestPolicy policy = policyOf<Function>();
+  TestMetadata metadata = metadataOf<Function>();
+
   return TestDescriptor{
       .identifier = std::move(identifier),
-      .location = std::meta::source_location_of(Function),
+      .location = location,
       .name = String{name},
-      .description = String{descriptionOf<Function>()},
+      .description = String{description},
       .testCase = testCase,
-      .policy = policyOf<Function>(),
-      .metadata = metadataOf<Function>(),
+      .policy = std::move(policy),
+      .metadata = std::move(metadata),
   };
 }
 
@@ -378,7 +385,7 @@ consteval auto invocationCapabilities() // NOLINT(readability-function-cognitive
 
   if constexpr (caseParameterCount<Function>() != 0 or
                 (usesLegacyCaseBinding<Namespace, Function>() and
-                    ReflectedFunctionMetadata<Function>::parameters.size() != 0))
+                    ReflectedFunctionMetadata<Function>::parameterCount != 0))
     inputs |= InvocationInput::CaseValues;
 
   if constexpr (providerParameterCount<Function>() != 0)
@@ -506,14 +513,20 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [] -> void {
-      const Option<Ref<TestEnvironment>> environment = currentEnvironment();
-      if (not environment)
-        fatal("Switch could not report an empty provider without an active environment");
-      environment->get().recordError(makeDiagnostic(
-          DiagnosticCode::ProviderProducedNoValues, detail::firstProviderLocation<Function>()));
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [] -> void {
+          const Option<Ref<TestEnvironment>> environment = currentEnvironment();
+          if (not environment)
+            fatal("Switch could not report an empty provider without an active environment");
+          environment->get().recordError(makeDiagnostic(
+              DiagnosticCode::ProviderProducedNoValues, detail::firstProviderLocation<Function>()));
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 };
 
@@ -548,11 +561,17 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [this](const Context &context) -> decltype(auto) {
-      return detail::invokeWithFixtures<Namespace, Function>(
-          context, suiteFixtures_, caseValues_, providerValues_);
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [this](const Context &context) -> decltype(auto) {
+          return detail::invokeWithFixtures<Namespace, Function>(
+              context, suiteFixtures_, caseValues_, providerValues_);
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 
 private:
@@ -598,11 +617,17 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [this](const Context &context) -> decltype(auto) {
-      return detail::invokeMemberWithFixtures<Namespace, Function>(
-          context, suiteFixtures_, subject_, caseValues_, providerValues_);
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [this](const Context &context) -> decltype(auto) {
+          return detail::invokeMemberWithFixtures<Namespace, Function>(
+              context, suiteFixtures_, subject_, caseValues_, providerValues_);
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 
 private:
@@ -643,11 +668,17 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [this](const Context &context) -> decltype(auto) {
-      return detail::invokeMemberFromFixture<Namespace, Function>(
-          context, suiteFixtures_, caseValues_, providerValues_);
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [this](const Context &context) -> decltype(auto) {
+          return detail::invokeMemberFromFixture<Namespace, Function>(
+              context, suiteFixtures_, caseValues_, providerValues_);
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 
 private:
@@ -679,45 +710,47 @@ struct ProviderWorkContext final {
 
 template <std::meta::info Namespace, std::meta::info Function, class CaseValues>
 auto appendProviderWorkItems(const ProviderWorkContext<Namespace, CaseValues> &context) -> void {
-  const usize providerCount = detail::forEachProviderCombination<Function>([&context](
-                                                                               const auto &...providerValues)
-                                                                               -> void {
-    const String providerDescription = detail::providerDescription<Function>(providerValues...);
-    auto providerTuple = std::make_tuple(providerValues...);
-    const TestDescriptor descriptor =
-        makeTestDescriptor<Function>(context.testCaseIndex, context.caseDescription, providerDescription);
-    using ProviderTuple = std::remove_cvref_t<decltype(providerTuple)>;
+  const usize providerCount =
+      detail::forEachProviderCombination<Function>([&context](const auto &...providerValues) -> void {
+        const String providerDescription = detail::providerDescription<Function>(providerValues...);
+        auto providerTuple = std::make_tuple(providerValues...);
+        const TestDescriptor descriptor =
+            makeTestDescriptor<Function>(context.testCaseIndex, context.caseDescription, providerDescription);
+        using ProviderTuple = std::remove_cvref_t<decltype(providerTuple)>;
 
-    if constexpr (isNonStaticMember<Namespace, Function>()) {
-      if constexpr (ReflectedFunctionMetadata<Function>::subjects.size() != 0) {
-        constexpr std::meta::info annotation = ReflectedFunctionMetadata<Function>::subjects.front();
-        using Annotation = meta::TypeObject<annotation>;
-        constexpr Annotation subjectAnnotation = std::meta::extract<Annotation>(annotation);
-        using SubjectValue = std::remove_cvref_t<decltype(subjectAnnotation.value())>;
-        using Factory = MemberInvocationFactory<Namespace, Function, SubjectValue, CaseValues, ProviderTuple>;
+        if constexpr (isNonStaticMember<Namespace, Function>()) {
+          if constexpr (ReflectedFunctionMetadata<Function>::subjects.size() != 0) {
+            constexpr std::meta::info annotation = ReflectedFunctionMetadata<Function>::subjects.front();
+            using Annotation = meta::TypeObject<annotation>;
+            constexpr Annotation subjectAnnotation = std::meta::extract<Annotation>(annotation);
+            using SubjectValue = std::remove_cvref_t<decltype(subjectAnnotation.value())>;
+            using Factory =
+                MemberInvocationFactory<Namespace, Function, SubjectValue, CaseValues, ProviderTuple>;
 
-        context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
-            invocationCapabilities<Namespace, Function>(),
-        std::make_shared<Factory>(subjectAnnotation.value(),
-                context.caseValues,
-                std::move(providerTuple),
-                context.suiteFixtures.get())});
-      } else {
-        using Factory = FixtureMemberInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
+            context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
+                invocationCapabilities<Namespace, Function>(),
+                std::make_shared<Factory>(subjectAnnotation.value(),
+                    context.caseValues,
+                    std::move(providerTuple),
+                    context.suiteFixtures.get())});
+          } else {
+            using Factory = FixtureMemberInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
 
-        context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
-            invocationCapabilities<Namespace, Function>(),
-            std::make_shared<Factory>(context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
-      }
-    } else {
-      using Factory = ReflectedInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
+            context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
+                invocationCapabilities<Namespace, Function>(),
+                std::make_shared<Factory>(
+                    context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
+          }
+        } else {
+          using Factory = ReflectedInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
 
-      context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
-          invocationCapabilities<Namespace, Function>(),
-          std::make_shared<Factory>(context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
-    }
-    ++context.testCaseIndex;
-  });
+          context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
+              invocationCapabilities<Namespace, Function>(),
+              std::make_shared<Factory>(
+                  context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
+        }
+        ++context.testCaseIndex;
+      });
 
   if (providerCount != 0)
     return;
@@ -792,15 +825,19 @@ auto appendScopeWorkItems(detail::RunSession &session, FixtureScope<FixtureNames
   }
 }
 
-template <std::meta::info Function>
+template <std::meta::info Function, usize ParameterIndex = 0>
 consteval auto hasDynamicProviders() -> bool {
-  template for (constexpr std::meta::info parameter : ReflectedFunctionMetadata<Function>::parameters) {
+  if constexpr (ParameterIndex == ReflectedFunctionMetadata<Function>::parameterCount) {
+    return false;
+  } else {
+    constexpr std::meta::info parameter =
+        ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
     if constexpr (isProviderParameter<Function, parameter>() and
                   providerKindOf<Function, parameter>() == ProviderKind::Files)
       return true;
-  }
 
-  return false;
+    return hasDynamicProviders<Function, ParameterIndex + 1>();
+  }
 }
 
 template <std::meta::info Scope, class Configuration>
@@ -905,9 +942,8 @@ template <std::meta::info Scope, class Configuration>
       },
       options.captureTiming != CapturePolicy::None};
   reporter.beginLive(output, options.captureTiming != CapturePolicy::None);
-  accumulator.setCompletionObserver([&reporter](const TestCaseResult &testCase) {
-    reporter.consumeLive(testCase);
-  });
+  accumulator.setCompletionObserver(
+      [&reporter](const TestCaseResult &testCase) { reporter.consumeLive(testCase); });
   static_cast<void>(detail::executePlannedCases(session, options, accumulator));
   RunReport report = std::move(accumulator).finish();
   reporter.finishLive(report);

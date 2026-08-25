@@ -3,7 +3,15 @@ add_executable(SwitchTests)
 file(GLOB switch_test_sources CONFIGURE_DEPENDS
      "${CMAKE_CURRENT_SOURCE_DIR}/*.cxx")
 
-target_sources(SwitchTests PRIVATE ${switch_test_sources})
+target_sources(
+  SwitchTests
+  PRIVATE ${switch_test_sources}
+  PRIVATE FILE_SET
+          switch_test_modules
+          TYPE
+          CXX_MODULES
+          FILES
+          Support.ixx)
 
 target_compile_features(SwitchTests PRIVATE cxx_std_26)
 

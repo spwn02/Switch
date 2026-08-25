@@ -53,6 +53,16 @@ consteval auto validateArgumentBinding() -> void {
       "values(...)]], or [[= files(...)]].");
 }
 
+template <std::meta::info Function, usize ParameterIndex = 0>
+consteval auto validateParameterBindings() -> void {
+  if constexpr (ParameterIndex < ReflectedFunctionMetadata<Function>::parameterCount) {
+    constexpr std::meta::info parameter =
+        ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
+    validateArgumentBinding<Function, parameter>();
+    validateParameterBindings<Function, ParameterIndex + 1>();
+  }
+}
+
 template <std::meta::info Function>
 consteval auto validateArgumentBindings() -> void {
   template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::arguments) {
@@ -67,9 +77,7 @@ consteval auto validateArgumentBindings() -> void {
     }
   }
 
-  template for (constexpr std::meta::info parameter : ReflectedFunctionMetadata<Function>::parameters) {
-    validateArgumentBinding<Function, parameter>();
-  }
+  validateParameterBindings<Function>();
 }
 
 template <std::meta::info Function, std::meta::info Parameter>
@@ -103,6 +111,22 @@ template <std::meta::info Function, std::meta::info Parameter>
 consteval auto isFromCaseParameter() -> bool {
   return parameterSource<Function, Parameter>() == ParameterSource::Case;
 }
+
+template <std::meta::info Function, usize ParameterIndex>
+consteval auto providerKindAt() -> ProviderKind {
+  constexpr std::meta::info parameter =
+      ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
+  return providerKindOf<Function, parameter>();
+}
+
+template <std::meta::info Function, usize ParameterIndex>
+consteval auto isProviderParameterAt() -> bool {
+  return providerKindAt<Function, ParameterIndex>() != ProviderKind::None;
+}
+
+template <std::meta::info Function, usize ParameterIndex>
+using ParameterTypeAt = meta::TypeObject<
+    ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>()>;
 
 template <std::meta::info Function, std::meta::info Parameter>
 consteval auto hasFileModifiers() -> bool {
@@ -153,6 +177,20 @@ consteval auto filesAnnotation() -> auto {
   return argumentProperty<Function, Parameter, IsFiles>();
 }
 
+template <std::meta::info Function, usize ParameterIndex>
+consteval auto valuesAnnotationAt() -> auto {
+  constexpr std::meta::info parameter =
+      ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
+  return valuesAnnotation<Function, parameter>();
+}
+
+template <std::meta::info Function, usize ParameterIndex>
+consteval auto filesAnnotationAt() -> auto {
+  constexpr std::meta::info parameter =
+      ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
+  return filesAnnotation<Function, parameter>();
+}
+
 template <std::meta::info Parameter, class ValueList>
 inline constexpr bool values_constructible_v{};
 
@@ -182,20 +220,28 @@ consteval auto validateProviderParameter() -> void {
   }
 }
 
+template <std::meta::info Function, usize ParameterIndex>
+consteval auto validateProviderParameterAt() -> void {
+  constexpr std::meta::info parameter =
+      ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
+  validateProviderParameter<Function, parameter>();
+}
+
 template <std::meta::info Function, usize ParameterIndex = 0>
 consteval auto validateProviderParameters() -> void {
-  if constexpr (ParameterIndex < ReflectedFunctionMetadata<Function>::parameters.size()) {
-    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
+  if constexpr (ParameterIndex < ReflectedFunctionMetadata<Function>::parameterCount) {
+    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
     validateProviderParameter<Function, parameter>();
     validateProviderParameters<Function, ParameterIndex + 1>();
   }
 }
 
-template <std::meta::info Function, std::meta::info Parameter, class Callback>
+template <std::meta::info Function, usize ParameterIndex, class Callback>
 constexpr auto forEachValues(Callback &&callback) -> void {
-  constexpr auto valueList = valuesAnnotation<Function, Parameter>();
+  constexpr auto valueList = valuesAnnotationAt<Function, ParameterIndex>();
+  using Value = ParameterTypeAt<Function, ParameterIndex>;
   valueList.apply([&callback](const auto &...items) -> void {
-    (std::invoke(std::forward<Callback>(callback), meta::TypeObject<Parameter>(items)), ...);
+    (std::invoke(std::forward<Callback>(callback), Value(items)), ...);
   });
 }
 
@@ -237,33 +283,40 @@ constexpr auto fileQuery() -> FileQuery {
   return query;
 }
 
-template <std::meta::info Function, std::meta::info Parameter, class Callback>
+template <std::meta::info Function, usize ParameterIndex>
+constexpr auto fileQueryAt() -> FileQuery {
+  constexpr std::meta::info parameter =
+      ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
+  return fileQuery<Function, parameter>();
+}
+
+template <std::meta::info Function, usize ParameterIndex, class Callback>
 constexpr auto forEachFiles(Callback &&callback) -> void {
-  const Vec<Path> paths = findFiles(fileQuery<Function, Parameter>());
+  const Vec<Path> paths = findFiles(fileQueryAt<Function, ParameterIndex>());
   std::ranges::for_each(paths, [&callback](const Path &path) constexpr -> void {
     std::invoke(std::forward<Callback>(callback), path);
   });
 }
 
-template <std::meta::info Function, std::meta::info Parameter, class Callback>
+template <std::meta::info Function, usize ParameterIndex, class Callback>
 constexpr auto forEachProviderValue(Callback &&callback) -> void {
-  validateProviderParameter<Function, Parameter>();
+  validateProviderParameterAt<Function, ParameterIndex>();
 
-  if constexpr (providerKindOf<Function, Parameter>() == ProviderKind::Values)
-    forEachValues<Function, Parameter>(std::forward<Callback>(callback));
-  else if constexpr (providerKindOf<Function, Parameter>() == ProviderKind::Files)
-    forEachFiles<Function, Parameter>(std::forward<Callback>(callback));
+  if constexpr (providerKindAt<Function, ParameterIndex>() == ProviderKind::Values)
+    forEachValues<Function, ParameterIndex>(std::forward<Callback>(callback));
+  else if constexpr (providerKindAt<Function, ParameterIndex>() == ProviderKind::Files)
+    forEachFiles<Function, ParameterIndex>(std::forward<Callback>(callback));
   else
-    static_assert(meta::always_false_v<meta::TypeObject<Parameter>>,
+    static_assert(meta::always_false_v<ParameterTypeAt<Function, ParameterIndex>>,
         "Switch attempted to enumerate a parameter without a provider binding.");
 }
 
 template <std::meta::info Function, usize ParameterIndex = 0>
 consteval auto providerParameterCount() -> usize {
-  if constexpr (ParameterIndex == ReflectedFunctionMetadata<Function>::parameters.size()) {
+  if constexpr (ParameterIndex == ReflectedFunctionMetadata<Function>::parameterCount) {
     return 0;
   } else {
-    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
+    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
     return (isProviderParameter<Function, parameter>() ? 1 : 0) +
            providerParameterCount<Function, ParameterIndex + 1>();
   }
@@ -274,7 +327,7 @@ consteval auto providerArgumentIndex() -> usize {
   if constexpr (CandidateIndex == ParameterIndex) {
     return 0;
   } else {
-    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[CandidateIndex];
+    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::template parameter<CandidateIndex>();
     return (isProviderParameter<Function, parameter>() ? 1 : 0) +
            providerArgumentIndex<Function, ParameterIndex, CandidateIndex + 1>();
   }
@@ -282,10 +335,10 @@ consteval auto providerArgumentIndex() -> usize {
 
 template <std::meta::info Function, usize ProviderIndex, usize ParameterIndex = 0>
 consteval auto providerParameterIndex() -> usize {
-  static_assert(ParameterIndex < ReflectedFunctionMetadata<Function>::parameters.size(),
+  static_assert(ParameterIndex < ReflectedFunctionMetadata<Function>::parameterCount,
       "Switch provider parameter index is outside the reflected function signature.");
 
-  constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
+  constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
   if constexpr (isProviderParameter<Function, parameter>()) {
     if constexpr (ProviderIndex == 0)
       return ParameterIndex;
@@ -298,10 +351,10 @@ consteval auto providerParameterIndex() -> usize {
 
 template <std::meta::info Function, usize ParameterIndex = 0>
 consteval auto firstProviderLocation() -> std::source_location {
-  if constexpr (ParameterIndex == ReflectedFunctionMetadata<Function>::parameters.size()) {
+  if constexpr (ParameterIndex == ReflectedFunctionMetadata<Function>::parameterCount) {
     return std::meta::source_location_of(Function);
   } else {
-    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
+    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::template parameter<ParameterIndex>();
     if constexpr (isProviderParameter<Function, parameter>())
       return std::meta::source_location_of(parameter);
     else
@@ -311,17 +364,16 @@ consteval auto firstProviderLocation() -> std::source_location {
 
 template <std::meta::info Function, usize ParameterIndex, class Callback, class... Values>
 auto forEachProviderCombinationImpl(Callback &&callback, usize &count, const Values &...values) -> void {
-  if constexpr (ParameterIndex == ReflectedFunctionMetadata<Function>::parameters.size()) {
+  if constexpr (ParameterIndex == ReflectedFunctionMetadata<Function>::parameterCount) {
     std::invoke(std::forward<Callback>(callback), values...);
     ++count;
   } else {
-    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
-
-    if constexpr (isProviderParameter<Function, parameter>()) {
-      forEachProviderValue<Function, parameter>([&callback, &count, &values...](const auto &value) -> void {
-        forEachProviderCombinationImpl<Function, ParameterIndex + 1>(
-            std::forward<Callback>(callback), count, values..., value);
-      });
+    if constexpr (isProviderParameterAt<Function, ParameterIndex>()) {
+      forEachProviderValue<Function, ParameterIndex>(
+          [&callback, &count, &values...](const auto &value) -> void {
+            forEachProviderCombinationImpl<Function, ParameterIndex + 1>(
+                std::forward<Callback>(callback), count, values..., value);
+          });
     } else {
       forEachProviderCombinationImpl<Function, ParameterIndex + 1>(
           std::forward<Callback>(callback), count, values...);
@@ -360,7 +412,7 @@ template <std::meta::info Function, usize ProviderIndex = 0, class Tuple>
 auto appendProviderDescription(String &result, const Tuple &values) -> void {
   if constexpr (ProviderIndex < std::tuple_size_v<std::remove_cvref_t<Tuple>>) {
     constexpr usize parameterIndex = providerParameterIndex<Function, ProviderIndex>();
-    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[parameterIndex];
+    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::template parameter<parameterIndex>();
     constexpr StringView name = meta::identifier<parameter>;
 
     if (not result.empty())
@@ -385,7 +437,7 @@ template <std::meta::info Function, usize ProviderIndex = 0>
 auto appendMissingProviderDescription(String &result) -> void {
   if constexpr (ProviderIndex < providerParameterCount<Function>()) {
     constexpr usize parameterIndex = providerParameterIndex<Function, ProviderIndex>();
-    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[parameterIndex];
+    constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::template parameter<parameterIndex>();
     constexpr StringView name = meta::identifier<parameter>;
 
     if (not result.empty())

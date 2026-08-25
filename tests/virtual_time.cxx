@@ -2,6 +2,7 @@ import std;
 
 import Miracle;
 import Switch;
+import SwitchTests.Support;
 
 using namespace Miracle;
 using namespace Switch;
@@ -192,7 +193,7 @@ namespace runnerProbe {
   const TestExecution execution = runVirtually(
       "cancellation cleanup",
       [&cleanupRan, &observedStop](const Context &context) -> Task<void> { // NOLINT
-        const auto cleanup = std::scope_exit([&cleanupRan] -> void { cleanupRan = true; });
+        const auto cleanup = Tests::support::ScopeExit([&cleanupRan] -> void { cleanupRan = true; });
         co_await sleepFor(std::chrono::hours{1});
         observedStop = context.stopToken.stop_requested();
         require(observedStop);
