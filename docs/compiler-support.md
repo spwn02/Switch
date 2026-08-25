@@ -81,50 +81,35 @@ Switch:gcc    --> Miracle:gcc
 
 A GCC Switch build must not silently combine `Switch:gcc` with `Miracle:master`
 
-## Semantic compatibility lowering
+## Direct parameter annotations on GCC
 
-A compatibility branch may use an alternate existing representation of the same public concept when the canonical C++26 spelling depends on a compiler feature GCC cannot yet expose, provided both forms normalize immediately into the same internal semantic model.
+The `direct_parameter_annotations` capability probe is the authority for this support. GCC compatibility does not use `arg<"...">(...)` as a compiler escape hatch when the direct spelling is available. Whether `arg<"...">(...)` exists as a general convenience API is an independent API question, not part of the compiler-support contract.
 
-The explicit parameter-provider compatibility path is:
-
-Canonical `master` spelling:
-
-```cpp
-auto test(i32 value [[= fromCase]]) -> void;
-```
-
-Temporary GCC spelling:
-
-```cpp
-[[= arg<"value">(fromCase)]]
-auto test(i32 value) -> void;
-```
-
-`arg<"...">(...)` is the supported GCC compatibility spelling for provider metadata until GCC can faithfully expose annotations attached directly to reflected function parameters.
-
-This is not a second provider system. Both representations must normalize into the same parameter-binding metadata before case expansion, provider resolution, invocation, diagnostics, or reporting.
-
-Conceptually:
+Every push or pull request targeting `gcc` runs the GCC compatibility validator. It validates the complete current Switch GCC stack:
 
 ```text
-direct parameter annotation ---\
-                                +--> ParameterBinding --> shared execution
-arg<"name">(...) --------------/
+resolve Miracle:gcc to one immutable commit SHA
+capability probes
+Switch self-tests and quickstart
+add_subdirectory consumer
+FetchContent consumer
+optimized Release build
+install + find_package consumer
 ```
 
-The same rule applies to `values`, `files`, `context`, `fromCase`, and other provider metadata supported by the legacy adapter.
+The resolved Miracle SHA is recorded in the workflow summary and supplied to CMake as an explicit local source checkout. A run therefore tests one reproducible `(Switch SHA, Miracle SHA)` pair rather than silently consuming whichever `Miracle:gcc` revision happens to move during configuration.
 
-Switch must not invent GCC-only public syntax such as preprocessor registration macros or `SWITCH_FROM_CASE(...)`.
+Every push to `master` creates a temporary synchronization candidate by merging `master` into the current `gcc` tip. The candidate is validated with the same GCC validator before `gcc` advances. A merge conflict, GCC regression, test failure, consumer/package failure, or concurrent `gcc` update fails the workflow and leaves `gcc` unchanged. The final branch update is a normal non-forced push.
 
-When GCC gains the required direct parameter-annotation reflection capability:
+This automation preserves the one-way policy:
 
-1. the relevant capability probe turns green;
-2. GCC tests move back to the canonical direct annotation spelling;
-3. semantic equivalence with the temporary `arg<"...">(...)` path is verified;
-4. the GCC-specific workaround is removed;
-5. the `master` implementation replaces it.
+```text
+master --> gcc
+```
 
-Whether `arg<"...">(...)` remains as a general convenience API afterward is a separate API decision and must not be dictated by compiler compatibility.
+There is no automated `gcc --> master` path. Compiler-independent fixes discovered while working on `gcc` still move to `master` explicitly.
+
+The GitHub runner currently uses the current Arch Linux GCC/libstdc++ package. Capability probes remain the acceptance criterion; the distro package version alone is not proof of support.
 
 ## Compatibility rules
 

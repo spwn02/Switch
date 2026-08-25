@@ -64,47 +64,66 @@ public:
       const long double right = positions_[index + 1] - positions_[index];
       const long double leftHeight = heights_[index] - heights_[index - 1];
       const long double rightHeight = heights_[index + 1] - heights_[index];
-      const long double parabolic = heights_[index] + static_cast<long double>(direction) /
-          (left + right) * ((left + static_cast<long double>(direction)) * rightHeight / right +
-              (right - static_cast<long double>(direction)) * leftHeight / left);
+      const long double parabolic =
+          heights_[index] + static_cast<long double>(direction) / (left + right) *
+                                ((left + static_cast<long double>(direction)) * rightHeight / right +
+                                    (right - static_cast<long double>(direction)) * leftHeight / left);
       const long double linear = heights_[index] + static_cast<long double>(direction) *
-          (heights_[index + direction] - heights_[index]) /
-          (positions_[index + direction] - positions_[index]);
-      heights_[index] = parabolic > heights_[index - 1] and parabolic < heights_[index + 1]
-          ? parabolic : linear;
+                                                       (heights_[index + direction] - heights_[index]) /
+                                                       (positions_[index + direction] - positions_[index]);
+      heights_[index] =
+          parabolic > heights_[index - 1] and parabolic < heights_[index + 1] ? parabolic : linear;
       positions_[index] += static_cast<long double>(direction);
     }
   }
 
-  [[nodiscard]] auto available() const noexcept -> bool { return count_ != 0; }
-  [[nodiscard]] auto approximate() const noexcept -> bool { return count_ >= 5; }
-  [[nodiscard]] auto count() const noexcept -> usize { return count_; }
+  [[nodiscard]] auto available() const noexcept -> bool {
+    return count_ != 0;
+  }
+  [[nodiscard]] auto approximate() const noexcept -> bool {
+    return count_ >= 5;
+  }
+  [[nodiscard]] auto count() const noexcept -> usize {
+    return count_;
+  }
 
   [[nodiscard]] auto value() const noexcept -> Duration {
     if (count_ == 0)
       return {};
     if (count_ < 5) {
       std::array<long double, 5> values = startup_;
-      std::ranges::sort(values.begin(), values.begin() + static_cast<isize>(count_));
+      sortPrefix(values, count_);
       const long double index = probability_ * static_cast<long double>(count_ - 1);
       const usize lower = static_cast<usize>(index);
       const usize upper = std::min(lower + 1, count_ - 1);
       const long double fraction = index - static_cast<long double>(lower);
-      return Duration{static_cast<typename Duration::rep>(
-          values[lower] + fraction * (values[upper] - values[lower]))};
+      return Duration{
+          static_cast<typename Duration::rep>(values[lower] + fraction * (values[upper] - values[lower]))};
     }
     return Duration{static_cast<typename Duration::rep>(heights_[2])};
   }
 
 private:
+  static auto sortPrefix(std::array<long double, 5> &values, usize count) noexcept -> void {
+    for (usize index = 1; index < count; ++index) {
+      const long double value = values[index];
+      usize position = index;
+      while (position != 0 and value < values[position - 1]) {
+        values[position] = values[position - 1];
+        --position;
+      }
+      values[position] = value;
+    }
+  }
+
   auto initialize() noexcept -> void {
-    std::ranges::sort(startup_.begin(), startup_.begin() + 5);
+    sortPrefix(startup_, 5);
     for (usize index{}; index != 5; ++index) {
       heights_[index] = startup_[index];
       positions_[index] = static_cast<long double>(index + 1);
     }
-    desired_ = {1.0L, 1.0L + 2.0L * probability_, 1.0L + 4.0L * probability_,
-        3.0L + 2.0L * probability_, 5.0L};
+    desired_ = {
+        1.0L, 1.0L + 2.0L * probability_, 1.0L + 4.0L * probability_, 3.0L + 2.0L * probability_, 5.0L};
     increments_ = {0.0L, probability_, 0.5L, 1.0L - probability_, 1.0L};
   }
 
@@ -252,7 +271,9 @@ struct BatchExecutionContext final {
   Option<TestExecution> firstFailure;
   Option<AttemptIndex> firstFailureAttempt;
 
-  [[nodiscard]] constexpr auto failed() const noexcept -> bool { return firstFailure.has_value(); }
+  [[nodiscard]] constexpr auto failed() const noexcept -> bool {
+    return firstFailure.has_value();
+  }
 };
 
 [[nodiscard]] auto makeAttemptOutcome(TestExecution execution, bool retainExecution = false)
@@ -353,9 +374,7 @@ auto normalizeReturn(Return &&returned, NormalizationContext &context) -> void {
 }
 
 /// Re-established all execution bindings before a coroutine frame resumes.
-auto resumeWithBindings(TestEnvironment &environment,
-    const Context &context,
-    std::coroutine_handle<> handle)
+auto resumeWithBindings(TestEnvironment &environment, const Context &context, std::coroutine_handle<> handle)
     -> void {
   EnvironmentBinding environmentBinding{environment};
   ContextBinding contextBinding{context};
@@ -406,8 +425,7 @@ template <class Value>
 auto normalizeTask(Task<Value> &&task, NormalizationContext &context) -> void {
   const TaskDriveResult result = detail::drive(task,
       context.runLoop,
-      ResumeCallback{.environment = context.environment,
-          .context = context.context},
+      ResumeCallback{.environment = context.environment, .context = context.context},
       TimeoutStopCallback{context},
       TimeoutWakeCallback{context});
 
@@ -581,9 +599,12 @@ auto invokeBodySafely(ActiveExecution &active, const Context &context, Function 
 [[nodiscard]] auto completeExecution(ActiveExecution &active, const InvocationSettings &invocation)
     -> TestExecution {
   const auto elapsed = active.runLoop.elapsed();
-  active.execution.duration = invocation.captureTiming == CapturePolicy::PerAttempt ? active.bodyDuration : std::chrono::steady_clock::duration{};
-  active.execution.wallDuration = invocation.captureTiming == CapturePolicy::PerAttempt ? active.bodyWallDuration
-                                                           : std::chrono::steady_clock::duration{};
+  active.execution.duration = invocation.captureTiming == CapturePolicy::PerAttempt
+                                  ? active.bodyDuration
+                                  : std::chrono::steady_clock::duration{};
+  active.execution.wallDuration = invocation.captureTiming == CapturePolicy::PerAttempt
+                                      ? active.bodyWallDuration
+                                      : std::chrono::steady_clock::duration{};
   if (invocation.captureProfile)
     active.execution.profile = active.environment.profileSnapshot();
   detail::applyPolicy(detail::PolicyApplication{
@@ -606,9 +627,12 @@ auto invokeBodySafely(ActiveExecution &active, const Context &context, Function 
 [[nodiscard]] auto completeAttemptOutcome(ActiveExecution &active, const InvocationSettings &invocation)
     -> AttemptOutcome {
   const auto elapsed = active.runLoop.elapsed();
-  active.execution.duration = invocation.captureTiming == CapturePolicy::PerAttempt ? active.bodyDuration : std::chrono::steady_clock::duration{};
-  active.execution.wallDuration = invocation.captureTiming == CapturePolicy::PerAttempt ? active.bodyWallDuration
-                                                           : std::chrono::steady_clock::duration{};
+  active.execution.duration = invocation.captureTiming == CapturePolicy::PerAttempt
+                                  ? active.bodyDuration
+                                  : std::chrono::steady_clock::duration{};
+  active.execution.wallDuration = invocation.captureTiming == CapturePolicy::PerAttempt
+                                      ? active.bodyWallDuration
+                                      : std::chrono::steady_clock::duration{};
   if (invocation.captureProfile)
     active.execution.profile = active.environment.profileSnapshot();
   detail::applyPolicy(PolicyApplication{
@@ -671,14 +695,16 @@ auto run(TestDescriptor descriptor, Function &&function, TimeMode timeMode = Tim
   {
     EnvironmentBinding environmentBinding{active.environment};
     ContextBinding contextBinding{context};
-    const auto bodyStarted = invocation.captureTiming == CapturePolicy::PerAttempt ? active.runLoop.elapsed() : std::chrono::steady_clock::duration{};
-    const auto bodyWallStarted = invocation.captureTiming == CapturePolicy::PerAttempt ? std::chrono::steady_clock::now()
-                                                          : std::chrono::steady_clock::time_point{};
+    const auto bodyStarted = invocation.captureTiming == CapturePolicy::PerAttempt
+                                 ? active.runLoop.elapsed()
+                                 : std::chrono::steady_clock::duration{};
+    const auto bodyWallStarted = invocation.captureTiming == CapturePolicy::PerAttempt
+                                     ? std::chrono::steady_clock::now()
+                                     : std::chrono::steady_clock::time_point{};
     if (invocation.captureProfile) {
-      auto testProfile =
-          profiling::profileScope(active.environment.profileSink(),
-              active.execution.descriptor.name,
-              active.execution.descriptor.location);
+      auto testProfile = profiling::profileScope(active.environment.profileSink(),
+          active.execution.descriptor.name,
+          active.execution.descriptor.location);
       detail::invokeBodySafely(active, context, std::forward<Function>(function));
     } else {
       detail::invokeBodySafely(active, context, std::forward<Function>(function));
@@ -708,14 +734,16 @@ template <detail::TestInvocable Function>
   {
     EnvironmentBinding environmentBinding{active.environment};
     ContextBinding contextBinding{context};
-    const auto bodyStarted = invocation.captureTiming == CapturePolicy::PerAttempt ? active.runLoop.elapsed() : std::chrono::steady_clock::duration{};
-    const auto bodyWallStarted = invocation.captureTiming == CapturePolicy::PerAttempt ? std::chrono::steady_clock::now()
-                                                          : std::chrono::steady_clock::time_point{};
+    const auto bodyStarted = invocation.captureTiming == CapturePolicy::PerAttempt
+                                 ? active.runLoop.elapsed()
+                                 : std::chrono::steady_clock::duration{};
+    const auto bodyWallStarted = invocation.captureTiming == CapturePolicy::PerAttempt
+                                     ? std::chrono::steady_clock::now()
+                                     : std::chrono::steady_clock::time_point{};
     if (invocation.captureProfile) {
-      auto testProfile =
-          profiling::profileScope(active.environment.profileSink(),
-              active.execution.descriptor.name,
-              active.execution.descriptor.location);
+      auto testProfile = profiling::profileScope(active.environment.profileSink(),
+          active.execution.descriptor.name,
+          active.execution.descriptor.location);
       detail::invokeBodySafely(active, context, std::forward<Function>(function));
     } else {
       detail::invokeBodySafely(active, context, std::forward<Function>(function));
@@ -804,11 +832,11 @@ auto runBatch(TestDescriptor descriptor,
       const long double fraction = index - static_cast<long double>(lower);
       const long double left = static_cast<long double>(batch.quantileSamples[lower].count());
       const long double right = static_cast<long double>(batch.quantileSamples[upper].count());
-      return std::chrono::steady_clock::duration{static_cast<std::chrono::steady_clock::duration::rep>(
-          left + fraction * (right - left))};
+      return std::chrono::steady_clock::duration{
+          static_cast<std::chrono::steady_clock::duration::rep>(left + fraction * (right - left))};
     };
-    const auto estimatedMedian = std::clamp(approximateQuantile(0.50L), batch.minimumDuration,
-        batch.maximumDuration);
+    const auto estimatedMedian =
+        std::clamp(approximateQuantile(0.50L), batch.minimumDuration, batch.maximumDuration);
     batch.firstQuartile = std::clamp(approximateQuantile(0.25L), batch.minimumDuration, estimatedMedian);
     batch.median = estimatedMedian;
     batch.thirdQuartile = std::clamp(approximateQuantile(0.75L), estimatedMedian, batch.maximumDuration);

@@ -24,7 +24,7 @@ Switch may adopt any standardized facility through C++26 whenever it produces a 
 
 The current reference implementation is [`spwn02/clang-p2996:p2996`](https://github.com/spwn02/clang-p2996/tree/p2996) together with its matching libc++. GCC compatibility is a deferred implementation concern and may trail `master`.
 
-Where GCC lacks direct reflected parameter annotations, the existing `[[= arg<"...">(...)]]` representation is the explicit compatibility path. It must normalize into the same parameter-binding model as the canonical direct parameter annotation API.
++The GCC compatibility line uses the same canonical direct reflected parameter-annotation spelling whenever the executable `direct_parameter_annotations` capability probe passes.
 
 The complete branch and compiler policy is defined in [`compiler-support.md`](compiler-support.md).
 
