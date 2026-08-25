@@ -78,6 +78,23 @@ jobs:
             echo "- Miracle:gcc: `$miracle_sha`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Measure GCC convergence
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 .github/scripts/report-gcc-convergence.py \
+            --master origin/master \
+            --gcc HEAD \
+            --output "$RUNNER_TEMP/gcc-convergence.json"
+
+      - name: Upload GCC convergence report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcc-sync-convergence-${{ github.run_id }}
+          path: ${{ runner.temp }}/gcc-convergence.json
+          if-no-files-found: error
+
       - name: Advance gcc
         shell: bash
         run: |

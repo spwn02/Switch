@@ -39,8 +39,8 @@ if(NOT 26 IN_LIST CMAKE_CXX_COMPILER_IMPORT_STD)
 endif()
 
 set(SWITCH_MIRACLE_FETCHCONTENT_TAG
-    "bab1016b54f567951b2cd98301c80243b847a609"
-    CACHE STRING "Miracle revision used by Switch's FetchContent fallback")
+    "v0.1.0-rc.1"
+    CACHE STRING "Miracle release used by Switch's FetchContent fallback")
 
 # Dependency injection is intentionally target-first. A parent build such as
 # Miracle's self-tests can provide Miracle::Miracle directly without Switch
