@@ -1,0 +1,88 @@
+name: Sync master to gcc
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-master-to-gcc
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Validate and advance gcc
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Create synchronization candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin \
+            master:refs/remotes/origin/master \
+            gcc:refs/remotes/origin/gcc
+          git switch --detach origin/gcc
+
+          if ! git merge --no-ff --no-edit origin/master; then
+            git status --short
+            git merge --abort || true
+            echo "::error::master cannot be merged cleanly into gcc; gcc was left unchanged."
+            exit 1
+          fi
+
+          git diff --check origin/gcc..HEAD
+
+      - name: Validate synchronization candidate on GCC
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace \
+            archlinux:latest \
+            bash -lc '
+              set -euo pipefail
+              pacman -Syu --noconfirm --needed \
+                base-devel ca-certificates cmake git ninja
+              bash ./.github/scripts/validate-gcc.sh
+            '
+
+      - name: Record GCC dependency alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          miracle_sha="$(sed -n 's/^MIRACLE_GCC_SHA=//p' build/gcc-dependency-alignment.env)"
+          if [[ ! "$miracle_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::invalid Miracle:gcc SHA recorded by validator"
+            exit 1
+          fi
+
+          {
+            echo "### GCC dependency alignment"
+            echo
+            echo "- Switch: `$(git rev-parse HEAD)`"
+            echo "- Miracle:gcc: `$miracle_sha`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Advance gcc
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Intentionally not forced. A concurrent gcc update rejects this push
+          # instead of overwriting a newer compatibility result.
+          git push origin HEAD:refs/heads/gcc

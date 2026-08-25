@@ -92,7 +92,7 @@ public:
       return {};
     if (count_ < 5) {
       std::array<long double, 5> values = startup_;
-      std::ranges::sort(values.begin(), values.begin() + static_cast<isize>(count_));
+      sortPrefix(values, count_);
       const long double index = probability_ * static_cast<long double>(count_ - 1);
       const usize lower = static_cast<usize>(index);
       const usize upper = std::min(lower + 1, count_ - 1);
@@ -104,8 +104,20 @@ public:
   }
 
 private:
+  static auto sortPrefix(std::array<long double, 5> &values, usize count) noexcept -> void {
+    for (usize index = 1; index < count; ++index) {
+      const long double value = values[index];
+      usize position = index;
+      while (position != 0 and value < values[position - 1]) {
+        values[position] = values[position - 1];
+        --position;
+      }
+      values[position] = value;
+    }
+  }
+
   auto initialize() noexcept -> void {
-    std::ranges::sort(startup_.begin(), startup_.begin() + 5);
+    sortPrefix(startup_, 5);
     for (usize index{}; index != 5; ++index) {
       heights_[index] = startup_[index];
       positions_[index] = static_cast<long double>(index + 1);

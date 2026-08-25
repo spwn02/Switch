@@ -4,6 +4,7 @@ on:
   push:
     branches: [master]
   pull_request:
+    branches: [master]
   workflow_dispatch:
   workflow_call:
 
@@ -31,7 +32,7 @@ jobs:
 
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            ca-certificates curl ninja-build python3 python3-venv zstd
+            ca-certificates curl gh ninja-build python3 python3-venv zstd
 
           python3 -m venv "$RUNNER_TEMP/cmake"
           "$RUNNER_TEMP/cmake/bin/pip" install --no-cache-dir cmake==4.4.2
@@ -39,24 +40,24 @@ jobs:
 
       - name: Install pinned reference toolchain
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          release_base="https://github.com/spwn02/clang-p2996/releases/download/${P2996_SNAPSHOT}"
+          # This immutable snapshot predates the clang-cxx26 repository rebrand.
+          # Keep its historical identity pinned until a new reference snapshot is promoted.
           download_dir="$RUNNER_TEMP/p2996-download"
           install_dir="$RUNNER_TEMP/p2996-install"
 
           mkdir -p "$download_dir" "$install_dir"
 
-          for suffix in tar.zst manifest.json SHA256SUMS; do
-            curl \
-              --fail \
-              --location \
-              --retry 3 \
-              --retry-all-errors \
-              --output "$download_dir/${P2996_ASSET}.${suffix}" \
-              "$release_base/${P2996_ASSET}.${suffix}"
-          done
+          gh release download "$P2996_SNAPSHOT" \
+            --repo spwn02/clang-cxx26 \
+            --pattern "${P2996_ASSET}.tar.zst" \
+            --pattern "${P2996_ASSET}.manifest.json" \
+            --pattern "${P2996_ASSET}.SHA256SUMS" \
+            --dir "$download_dir"
 
           (
             cd "$download_dir"

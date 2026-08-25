@@ -1,0 +1,54 @@
+name: GCC compatibility
+
+on:
+  push:
+    branches: [gcc]
+  pull_request:
+    branches: [gcc]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gcc:
+    name: GCC compatibility
+    if: github.event_name != 'workflow_dispatch' || github.ref_name == 'gcc'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate GCC compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace \
+            archlinux:latest \
+            bash -lc '
+              set -euo pipefail
+              pacman -Syu --noconfirm --needed \
+                base-devel ca-certificates cmake git ninja
+              bash ./.github/scripts/validate-gcc.sh
+            '
+
+      - name: Record GCC dependency alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          miracle_sha="$(sed -n 's/^MIRACLE_GCC_SHA=//p' build/gcc-dependency-alignment.env)"
+          if [[ ! "$miracle_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::invalid Miracle:gcc SHA recorded by validator"
+            exit 1
+          fi
+
+          {
+            echo "### GCC dependency alignment"
+            echo
+            echo "- Switch: `$(git rev-parse HEAD)`"
+            echo "- Miracle:gcc: `$miracle_sha`"
+          } >> "$GITHUB_STEP_SUMMARY"
