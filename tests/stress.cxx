@@ -155,7 +155,13 @@ repeatsConcurrently() -> Task<void> {
 
   const auto release = std::scope_exit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
 
-  while (active.load(std::memory_order_relaxed) < expectedParallelAttempts)
+  // Gate on peak, not active: active can drop back down the instant any
+  // attempt observes the target and departs, which can permanently strand
+  // slower attempts spinning below a target that was in fact reached. peak
+  // is monotonically non-decreasing, so once it reaches the target every
+  // attempt is guaranteed to observe that and proceed, regardless of
+  // arrival/departure order.
+  while (peak.load(std::memory_order_relaxed) < expectedParallelAttempts)
     co_await yield();
   co_await yield();
 }

@@ -226,10 +226,11 @@ auto policyOf() -> TestPolicy {
 
   constexpr bool isolated = ReflectedFunctionMetadata<Function>::isolated.size() != 0;
   constexpr bool parent = ReflectedFunctionMetadata<Function>::parents.size() != 0;
+  constexpr bool trace = ReflectedFunctionMetadata<Function>::traces.size() != 0;
   static_assert(not(isolated and parent), "Switch tests cannot combine [[= isolated]] and [[= parent]]");
 
   TestPolicy policy{
-      .trace = ReflectedFunctionMetadata<Function>::traces.size() != 0,
+      .trace = trace,
       .isolated = isolated,
       .parent = parent,
   };

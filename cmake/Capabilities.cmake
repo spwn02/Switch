@@ -3,9 +3,32 @@ include_guard(GLOBAL)
 function(switch_check_capabilities)
   file(SHA256 "${CMAKE_CURRENT_FUNCTION_LIST_FILE}" capability_contract_hash)
 
+  # Capability probes are independent compiler/toolchain checks. A superproject
+  # may wrap the actual compiler toolchain (for example, vcpkg via
+  # CMAKE_TOOLCHAIN_FILE + VCPKG_CHAINLOAD_TOOLCHAIN_FILE), so probing through
+  # the outer wrapper alone can silently select a different compiler.
+  #
+  # Prefer an explicit probe override, then the effective vcpkg chainload
+  # toolchain, and finally the ordinary CMake toolchain.
+  set(capability_toolchain_file "")
+  if(DEFINED SWITCH_CAPABILITY_TOOLCHAIN_FILE
+     AND NOT "${SWITCH_CAPABILITY_TOOLCHAIN_FILE}" STREQUAL "")
+    set(capability_toolchain_file "${SWITCH_CAPABILITY_TOOLCHAIN_FILE}")
+  elseif(DEFINED VCPKG_CHAINLOAD_TOOLCHAIN_FILE
+         AND NOT "${VCPKG_CHAINLOAD_TOOLCHAIN_FILE}" STREQUAL "")
+    set(capability_toolchain_file "${VCPKG_CHAINLOAD_TOOLCHAIN_FILE}")
+  elseif(CMAKE_TOOLCHAIN_FILE)
+    set(capability_toolchain_file "${CMAKE_TOOLCHAIN_FILE}")
+  endif()
+
   set(capability_toolchain_hash "")
-  if(CMAKE_TOOLCHAIN_FILE AND EXISTS "${CMAKE_TOOLCHAIN_FILE}")
-    file(SHA256 "${CMAKE_TOOLCHAIN_FILE}" capability_toolchain_hash)
+  if(capability_toolchain_file)
+    if(NOT EXISTS "${capability_toolchain_file}")
+      message(FATAL_ERROR "Switch capability toolchain does not exist:\n"
+                          "  ${capability_toolchain_file}")
+    endif()
+
+    file(SHA256 "${capability_toolchain_file}" capability_toolchain_hash)
   endif()
 
   string(
@@ -16,6 +39,8 @@ function(switch_check_capabilities)
            "${CMAKE_CXX_FLAGS}|"
            "${CMAKE_BUILD_TYPE}|"
            "${CMAKE_TOOLCHAIN_FILE}|"
+           "${VCPKG_CHAINLOAD_TOOLCHAIN_FILE}|"
+           "${capability_toolchain_file}|"
            "${capability_toolchain_hash}|"
            "${capability_contract_hash}")
 
@@ -116,9 +141,9 @@ endforeach()
 
   # A selected toolchain owns compiler/runtime mode completely. In particular,
   # Switch must not reconstruct implementation-specific compiler flags.
-  if(CMAKE_TOOLCHAIN_FILE)
+  if(capability_toolchain_file)
     list(APPEND configure_command
-         "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+         "-DCMAKE_TOOLCHAIN_FILE=${capability_toolchain_file}")
   else()
     list(APPEND configure_command "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
 
