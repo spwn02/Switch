@@ -31,22 +31,24 @@ The current reference implementation is:
 
 ```text
 compiler:
-  https://github.com/spwn02/clang-p2996
-  branch: p2996
+  https://github.com/spwn02/clang-cxx26
+  branch: cxx26
 
 standard library:
   the matching libc++ tree from the same fork
 ```
 
-The fork builds on Bloomberg's Clang/P2996 work and is being extended with a focus on compiler stability, real-world reflection-heavy workloads, and progressively broader C++26 libc++ coverage.
+`clang-cxx26` preserves upstream LLVM history and the Bloomberg-originated reflection implementation while broadening the fork into a general C++26 toolchain. The current development line is synchronized with LLVM/Clang 22.1.8.
 
 "Reference toolchain" does not mean Switch is permanently tied to one compiler. It is the implementation currently used to validate the complete `master` contract.
 
 Other toolchains become eligible for `master` support when they implement the required standardized behavior faithfully. Support is ultimately capability-driven rather than vendor- or version-driven.
 
-The compiler alone is not the reference unit: its matching libc++ headers, binaries, ABI runtime, and C++ module sources/metadata belong to the same validated toolchain build. Deliberately mixing components from unrelated toolchain revisions is unsupported.
+The compiler alone is not the reference unit: its matching libc++ headers, binaries, ABI runtime, C++ module sources/metadata, and compiler-compatible development tools belong to the same validated toolchain build. Deliberately mixing components from unrelated toolchain revisions is unsupported.
 
-The `p2996` branch is the mutable source-development channel, not a CI/release pin. Immutable `p2996-YYYY.MM.DD[.N]` snapshots provide validated compiler, libc++, ABI/runtime, module, and toolchain-file units. The current validated reference snapshot is `p2996-2026.08.23.2`.
+The mutable development channel is `clang-cxx26:cxx26`. CI and future releases never follow it directly. The currently validated immutable reference is `cxx26-2026.09.05`, built from source revision `6c7ef6afbfd8456c964c7a2625b3ea2aaa7d613f`.
+
+The historical `p2996-2026.08.23.2` snapshot remains immutable provenance for earlier releases, but it is no longer the current reference baseline.
 
 See [`reference-toolchain.md`](reference-toolchain.md) for the complete identity, provenance, selection, component-coherence, and snapshot contract.
 
@@ -72,14 +74,16 @@ The entire `gcc` branch is never merged back into `master`.
 
 Compiler-independent fixes found while adapting GCC should be fixed or cherry-picked independently on `master`. GCC-specific compatibility machinery remains on `gcc`.
 
-Once the compatibility branches exist, dependency alignment is:
+Dependency alignment is:
 
 ```text
 Switch:master --> Miracle:master
 Switch:gcc    --> Miracle:gcc
 ```
 
-A GCC Switch build must not silently combine `Switch:gcc` with `Miracle:master`
+Reference-toolchain CI resolves one exact Miracle `master` revision rather than following a moving branch during configuration. Release-oriented FetchContent fallback remains pinned to the declared Miracle release tag, and release provenance records that tag's exact peeled commit.
+
+A GCC Switch build must not silently combine `Switch:gcc` with `Miracle:master`.
 
 ## Direct parameter annotations on GCC
 
@@ -99,7 +103,7 @@ install + find_package consumer
 
 The resolved Miracle SHA is recorded in the workflow summary and supplied to CMake as an explicit local source checkout. A run therefore tests one reproducible `(Switch SHA, Miracle SHA)` pair rather than silently consuming whichever `Miracle:gcc` revision happens to move during configuration.
 
-Every push to `master` creates a temporary synchronization candidate by merging `master` into the current `gcc` tip. The candidate is validated with the same GCC validator before `gcc` advances. A merge conflict, GCC regression, test failure, consumer/package failure, or concurrent `gcc` update fails the workflow and leaves `gcc` unchanged. The final branch update is a normal non-forced push.
+Every push to `master` creates a temporary synchronization candidate by merging `master` into the current `gcc` tip. When both branches edit the same file, the existing `gcc` version wins because it contains the compiler-specific compatibility implementation; master-only commits and files are still imported. The candidate is validated with the same GCC validator before `gcc` advances. An unresolvable merge conflict, GCC regression, test failure, consumer/package failure, or concurrent `gcc` update fails the workflow and leaves `gcc` unchanged. The final update is a normal non-forced push, and the fetch is force-tolerant so amended or force-pushed `master` commits can recover a stale `gcc` tip.
 
 This automation preserves the one-way policy:
 
@@ -110,6 +114,10 @@ master --> gcc
 There is no automated `gcc --> master` path. Compiler-independent fixes discovered while working on `gcc` still move to `master` explicitly.
 
 The GitHub runner currently uses the current Arch Linux GCC/libstdc++ package. Capability probes remain the acceptance criterion; the distro package version alone is not proof of support.
+
+Every successful GCC validation also writes `gcc-convergence.json`, a machine-readable report of the complete `master`/`gcc` tree delta. The report records the exact revisions, merge base, graph distance, changed files, and line delta. Synchronization candidates produce the same report before `gcc` advances, so convergence evidence does not depend on a bot-authored push triggering a second workflow.
+
+An empty tree delta is a **promotion candidate**, not permission to delete the compatibility branch automatically.
 
 ## Compatibility rules
 
@@ -135,7 +143,15 @@ Official Switch releases are cut from:
 master
 ```
 
-The `gcc` branch is non-release-bearing for now. There are no `-gcc`, `-gcc16` or parallel compatibility releases.
+A release tag must resolve to a commit contained in `master` history. The release workflow rejects a tag that points only to `gcc` or another side branch even when its version spelling is otherwise valid.
+
+Every GitHub release attaches deterministic `release-metadata.json`. The metadata records the exact Switch source revision, the `master` release branch, the immutable reference-toolchain snapshot and source revision, the exact Miracle release revision, and that `gcc` is explicitly non-release-bearing.
+
+The already-published `v0.1.0-rc.1` release remains immutable historical provenance. Updating the current reference baseline does not rewrite that release or its metadata.
+
+The `gcc` branch is non-release-bearing. There are no `-gcc`, `-gcc16` or parallel compatibility releases.
+
+## GCC convergence and retirement
 
 The intended end state is convergence:
 
@@ -146,14 +162,27 @@ GCC/libstdc++ implementation improves
 compatibility delta shrinks
               |
               v
-GCC passes the master capability contract
+validated gcc tree matches master
+              |
+              v
+same GCC validator runs directly on master
               |
               v
 GCC joins master CI
               |
               v
-gcc branch is retired
+gcc branch is retired explicitly
 ```
+
+Retirement is deliberately gated:
+
+1. A green GCC validation must report `treeEqual: true` against `master`.
+2. The same GCC validator must then pass directly against the unmodified `master` tree.
+3. Reference-toolchain CI remains required; GCC supplements it rather than replacing it.
+4. At least one subsequent meaningful C++/build change on `master` must pass both the reference lane and the direct GCC lane without recreating a compatibility delta.
+5. Only then are the synchronization workflow and branch-specific GCC lane removed and the `gcc` branch deleted explicitly.
+
+No workflow force-pushes, rewrites, or automatically deletes `gcc`. The compatibility branch is transitional infrastructure, not a permanent fork or a second product line.
 
 ## Capability-driven support
 

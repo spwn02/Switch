@@ -31,11 +31,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --no-tags origin \
-            master:refs/remotes/origin/master \
-            gcc:refs/remotes/origin/gcc
+            +master:refs/remotes/origin/master \
+            +gcc:refs/remotes/origin/gcc
           git switch --detach origin/gcc
 
-          if ! git merge --no-ff --no-edit origin/master; then
+          # gcc is a compatibility branch, so its compiler-specific edits are
+          # authoritative whenever both branches changed the same file. The
+          # three-way merge still brings across master-only commits and files,
+          # while -X ours resolves edits made on both sides in favour of the
+          # existing GCC implementation. This keeps an amended or force-pushed
+          # master recoverable without rewriting the gcc branch.
+          if ! git merge --no-ff --no-edit -X ours origin/master; then
             git status --short
             git merge --abort || true
             echo "::error::master cannot be merged cleanly into gcc; gcc was left unchanged."
