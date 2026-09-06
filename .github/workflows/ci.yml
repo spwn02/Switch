@@ -12,14 +12,14 @@ permissions:
   contents: read
 
 env:
-  P2996_SNAPSHOT: p2996-2026.08.23.2
-  P2996_REVISION: 60966cc65acc736637ffd4ba03951932e47f5042
-  P2996_ASSET: clang-p2996-2026.08.23.2-linux-x86_64
+  CXX26_SNAPSHOT: cxx26-2026.09.05
+  CXX26_REVISION: 6c7ef6afbfd8456c964c7a2625b3ea2aaa7d613f
+  CXX26_ASSET: clang-cxx26-2026.09.05-linux-x86_64
   MIRACLE_REVISION: b16bcb4672957060d3b99e036e7532ee2bd0fcf6
 
 jobs:
   reference:
-    name: Reference C++26 (p2996-2026.08.23.2)
+    name: Reference C++26 (cxx26-2026.09.05)
     runs-on: ubuntu-22.04
 
     steps:
@@ -45,29 +45,27 @@ jobs:
         run: |
           set -euo pipefail
 
-          # This immutable snapshot predates the clang-cxx26 repository rebrand.
-          # Keep its historical identity pinned until a new reference snapshot is promoted.
-          download_dir="$RUNNER_TEMP/p2996-download"
-          install_dir="$RUNNER_TEMP/p2996-install"
+          download_dir="$RUNNER_TEMP/cxx26-download"
+          install_dir="$RUNNER_TEMP/cxx26-install"
 
           mkdir -p "$download_dir" "$install_dir"
 
-          gh release download "$P2996_SNAPSHOT" \
+          gh release download "$CXX26_SNAPSHOT" \
             --repo spwn02/clang-cxx26 \
-            --pattern "${P2996_ASSET}.tar.zst" \
-            --pattern "${P2996_ASSET}.manifest.json" \
-            --pattern "${P2996_ASSET}.SHA256SUMS" \
+            --pattern "${CXX26_ASSET}.tar.zst" \
+            --pattern "${CXX26_ASSET}.manifest.json" \
+            --pattern "${CXX26_ASSET}.SHA256SUMS" \
             --dir "$download_dir"
 
           (
             cd "$download_dir"
-            sha256sum --check "${P2996_ASSET}.SHA256SUMS"
+            sha256sum --check "${CXX26_ASSET}.SHA256SUMS"
           )
 
           python3 - \
-            "$download_dir/${P2996_ASSET}.manifest.json" \
-            "$P2996_SNAPSHOT" \
-            "$P2996_REVISION" <<'PY'
+            "$download_dir/${CXX26_ASSET}.manifest.json" \
+            "$CXX26_SNAPSHOT" \
+            "$CXX26_REVISION" <<'PY'
           import json
           from pathlib import Path
           import sys
@@ -86,37 +84,42 @@ jobs:
               manifest["source"]["revision"],
               expected_revision,
           )
+          assert manifest["source"]["repository"] == "https://github.com/spwn02/clang-cxx26"
+          assert manifest["source"]["branch"] == "cxx26"
+          assert manifest["compiler"]["name"] == "clang-cxx26"
           assert manifest["platform"]["os"] == "linux"
           assert manifest["platform"]["architecture"] == "x86_64"
           assert manifest["cmake"]["minimumConsumerVersion"] == "4.4"
+          assert manifest["cmake"]["toolchainFile"] == "share/clang-cxx26/toolchain.cmake"
           PY
 
           tar \
             --use-compress-program=unzstd \
-            -xf "$download_dir/${P2996_ASSET}.tar.zst" \
+            -xf "$download_dir/${CXX26_ASSET}.tar.zst" \
             -C "$install_dir"
 
-          toolchain_root="$install_dir/clang-${P2996_SNAPSHOT}"
+          toolchain_root="$install_dir/clang-${CXX26_SNAPSHOT}"
           test -x "$toolchain_root/bin/clang++"
-          test -f "$toolchain_root/share/clang-p2996/toolchain.cmake"
-          test -f "$toolchain_root/share/clang-p2996/activate.sh"
+          test -x "$toolchain_root/bin/clangd"
+          test -f "$toolchain_root/share/clang-cxx26/toolchain.cmake"
+          test -f "$toolchain_root/share/clang-cxx26/activate.sh"
 
           cmp \
-            "$download_dir/${P2996_ASSET}.manifest.json" \
-            "$toolchain_root/share/clang-p2996/manifest.json"
+            "$download_dir/${CXX26_ASSET}.manifest.json" \
+            "$toolchain_root/share/clang-cxx26/manifest.json"
 
           # shellcheck disable=SC1090
-          source "$toolchain_root/share/clang-p2996/activate.sh"
+          source "$toolchain_root/share/clang-cxx26/activate.sh"
 
           {
-            echo "P2996_TOOLCHAIN_ROOT=$P2996_TOOLCHAIN_ROOT"
-            echo "P2996_CMAKE_TOOLCHAIN_FILE=$P2996_CMAKE_TOOLCHAIN_FILE"
+            echo "CXX26_TOOLCHAIN_ROOT=$CXX26_TOOLCHAIN_ROOT"
+            echo "CXX26_CMAKE_TOOLCHAIN_FILE=$CXX26_CMAKE_TOOLCHAIN_FILE"
             echo "CC=$CC"
             echo "CXX=$CXX"
             echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
           } >> "$GITHUB_ENV"
 
-          echo "$P2996_TOOLCHAIN_ROOT/bin" >> "$GITHUB_PATH"
+          echo "$CXX26_TOOLCHAIN_ROOT/bin" >> "$GITHUB_PATH"
 
       - name: Toolchain
         shell: bash
@@ -133,7 +136,7 @@ jobs:
           set -euo pipefail
 
           cmake --preset tests --fresh \
-            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_TOOLCHAIN_FILE="$CXX26_CMAKE_TOOLCHAIN_FILE" \
             -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION"
           cmake --build --preset tests
           ctest --preset tests
@@ -147,7 +150,7 @@ jobs:
             -S tests/consumer/add-subdirectory \
             -B build/consumer-add \
             -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_TOOLCHAIN_FILE="$CXX26_CMAKE_TOOLCHAIN_FILE" \
             -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION" \
             -DSWITCH_SOURCE_DIR="$GITHUB_WORKSPACE"
           cmake --build build/consumer-add
@@ -162,7 +165,7 @@ jobs:
             -S tests/consumer/fetch-content \
             -B build/consumer-fetch \
             -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_TOOLCHAIN_FILE="$CXX26_CMAKE_TOOLCHAIN_FILE" \
             -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION" \
             -DFETCHCONTENT_SOURCE_DIR_SWITCH="$GITHUB_WORKSPACE"
           cmake --build build/consumer-fetch
@@ -174,7 +177,7 @@ jobs:
           set -euo pipefail
 
           cmake --preset release --fresh \
-            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_TOOLCHAIN_FILE="$CXX26_CMAKE_TOOLCHAIN_FILE" \
             -DSWITCH_MIRACLE_FETCHCONTENT_TAG="$MIRACLE_REVISION"
           cmake --build --preset release
           cmake --install build/release --prefix "$GITHUB_WORKSPACE/build/install"
@@ -183,7 +186,7 @@ jobs:
             -S tests/consumer/find-package \
             -B build/consumer-package \
             -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE="$P2996_CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_TOOLCHAIN_FILE="$CXX26_CMAKE_TOOLCHAIN_FILE" \
             -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build/install"
           cmake --build build/consumer-package
           ./build/consumer-package/switch_consumer
