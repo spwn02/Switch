@@ -247,14 +247,17 @@ auto policyOf() -> TestPolicy {
     policy.timeout = std::chrono::duration_cast<std::chrono::steady_clock::duration>(limit.apply());
   }
 
-  template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::repeats)
-      policy.repeat = std::meta::extract<Repeat>(annotation).apply();
+  template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::repeats) {
+    policy.repeat = std::meta::extract<Repeat>(annotation).apply();
+  }
 
-  template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::warmups)
-      policy.warmup = std::meta::extract<Warmup>(annotation).apply();
+  template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::warmups) {
+    policy.warmup = std::meta::extract<Warmup>(annotation).apply();
+  }
 
-  template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::retries)
-      policy.retry = std::meta::extract<Retry>(annotation).apply();
+  template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::retries) {
+    policy.retry = std::meta::extract<Retry>(annotation).apply();
+  }
 
   return policy;
 }

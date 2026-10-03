@@ -605,7 +605,7 @@ struct Case final {
   consteval {
     std::meta::define_aggregate(^^Storage,
         {
-            std::meta::data_member_spec(^^Values)...});
+            std::meta::data_member_spec(^^Values, {.name = "_"})...});
   }
 
   static constexpr auto members_ = meta::nsMembers<^^Storage, meta::AccessContext::unchecked()>;

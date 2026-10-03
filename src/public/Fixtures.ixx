@@ -177,8 +177,9 @@ consteval auto validateFixtureDependencyGraph() -> void {
       "Switch fixture dependencies cannot form a cycle.");
   validateFixtureSignature<FixtureFunction>();
 
-  template for (constexpr std::meta::info parameter : ReflectedFunctionMetadata<FixtureFunction>::parameters)
-      validateFixtureDependency<Namespace, FixtureFunction, parameter, Path...>();
+  template for (constexpr std::meta::info parameter : ReflectedFunctionMetadata<FixtureFunction>::parameters) {
+    validateFixtureDependency<Namespace, FixtureFunction, parameter, Path...>();
+  }
 }
 
 template <std::meta::info Namespace>
