@@ -191,7 +191,7 @@ struct Diagnostic final {
 
 [[nodiscard]] constexpr auto diagnosticDescription(DiagnosticCode code) -> String {
   // NOLINTNEXTLINE(bugprone-reserved-identifier)
-  template for (constexpr std::meta::info item : meta::enumerators<^^DiagnosticCode>) {
+  template for (constexpr std::meta::info item : meta::enumerators(^^DiagnosticCode)) {
     if ([:item:] == code)
       return String{diagnostics::annotationMessage<item>()};
   }

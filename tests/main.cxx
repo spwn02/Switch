@@ -8,7 +8,7 @@ inline constexpr RunOptions selfTestOptions{
     .threads = 1,
     .retention = RetentionPolicy::Failures,
     .timeMode = TimeMode::Real,
-    .traceMode = TraceMode::Annotations,
+    .traceMode = Switch::TraceMode::Annotations,
     .captureTiming = CapturePolicy::PerAttempt,
     .order = ExecutionOrder::Declaration,
     .isolation = CrashIsolation::InProcess,
@@ -19,10 +19,10 @@ auto main() -> int {
       ReporterOptions{
           .renderer =
               {
-                  .color = ColorMode::Automatic,
+                  .color = Switch::ColorMode::Automatic,
                   .terminal = true,
                   .showSource = true,
-                  .details = DetailMode::Trace,
+                  .details = Switch::DetailMode::Trace,
               },
           .showPassedTests = false,
           .showAttempts = false,

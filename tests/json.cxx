@@ -35,7 +35,7 @@ namespace Tests::json {
   passing.runSeed = 1234;
   passing.seed = 5678;
   passing.iteration = 2;
-  passing.traceMode = TraceMode::ForcedAll;
+  passing.traceMode = Switch::TraceMode::ForcedAll;
 
   TestExecution failing = run(
       TestDescriptor{

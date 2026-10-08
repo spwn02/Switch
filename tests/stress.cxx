@@ -238,7 +238,7 @@ auto reset() -> void {
   = test,
   = group("framework"),
   = tag("stress", "measurement_serial"),
-  = repeat(4),
+  = Switch::repeat(4),
   = parallelAttempts
 ]] auto
 samplesRemainSerial() -> Task<void> {

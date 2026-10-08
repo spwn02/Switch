@@ -113,7 +113,7 @@ doesNotResumeADoublyScheduledCoroutineBeforeItsTimer() -> void {
   require(execution.failed());
   require(execution.state.errors == 1_exp);
   require(execution.state.diagnostics.size() == 1_exp);
-  const Diagnostic &diagnostic = execution.state.diagnostics.front();
+  const Switch::Diagnostic &diagnostic = execution.state.diagnostics.front();
   require(diagnostic.details.notes.size() == 2_exp);
   check(diagnostic.header.code == DiagnosticCode::TaskStranded);
   check(diagnostic.code() == "E016"_exp);
@@ -143,7 +143,7 @@ reportsOnlyTheTimeoutWhenCancellationCannotResumeATask() -> void {
   require(invalidExecution.failed());
   require(invalidExecution.state.errors == 1_exp);
   require(invalidExecution.state.diagnostics.size() == 1_exp);
-  const Diagnostic &diagnostic = invalidExecution.state.diagnostics.front();
+  const Switch::Diagnostic &diagnostic = invalidExecution.state.diagnostics.front();
   require(diagnostic.header.code == DiagnosticCode::TaskStranded);
   check(diagnostic.details.notes.front().message.contains("remained"));
   check(followingExecution.passed());

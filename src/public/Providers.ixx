@@ -56,7 +56,7 @@ consteval auto validateArgumentBinding() -> void {
 template <std::meta::info Function>
 consteval auto validateArgumentBindings() -> void {
   template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::arguments) {
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename [: std::meta::type_of(annotation) :];
 
     if constexpr (is_argument_v<Annotation>) {
       static_assert(ArgumentTraits<Annotation>::propertiesAreSupported(),
@@ -117,7 +117,7 @@ consteval auto argumentProperty() -> auto {
       template for (constexpr ParameterProperty property :
           ReflectedFunctionMetadata<Function>::parameterProperties) {
         if constexpr (property.parameter == Parameter and not property.legacy) {
-          using Annotation = meta::TypeObject<property.annotation>;
+          using Annotation = typename [: std::meta::type_of(property.annotation) :];
 
           if constexpr (Predicate<Annotation>::value)
             return std::meta::extract<Annotation>(property.annotation);
@@ -125,7 +125,7 @@ consteval auto argumentProperty() -> auto {
       }
     } else {
       template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::arguments) {
-        using Annotation = meta::TypeObject<annotation>;
+        using Annotation = typename [: std::meta::type_of(annotation) :];
 
         if constexpr (argumentTargetsParameter<Parameter, Annotation>() and
                       ArgumentTraits<Annotation>::template contains<Predicate>()) {
@@ -138,7 +138,7 @@ consteval auto argumentProperty() -> auto {
 
     std::unreachable();
   } else {
-    static_assert(meta::always_false_v<meta::TypeObject<Parameter>>,
+    static_assert((!std::same_as<typename [: std::meta::type_of(Parameter) :], typename [: std::meta::type_of(Parameter) :]>),
         "Switch could not find the requested parameter annotation or legacy arg property.");
   }
 }
@@ -158,7 +158,7 @@ inline constexpr bool values_constructible_v{};
 
 template <std::meta::info Parameter, class... ValueTypes>
 inline constexpr bool values_constructible_v<Parameter, Values<ValueTypes...>> =
-    (std::constructible_from<meta::TypeObject<Parameter>, ValueTypes> and ...);
+    (std::constructible_from<typename [: std::meta::type_of(Parameter) :], ValueTypes> and ...);
 
 template <std::meta::info Function, std::meta::info Parameter>
 consteval auto validateProviderParameter() -> void {
@@ -173,7 +173,7 @@ consteval auto validateProviderParameter() -> void {
         "Switch [[= exclude(...)]] and [[= includeDotFiles]] require [[= files(...)]] on the same "
         "parameter.");
   } else if constexpr (providerKindOf<Function, Parameter>() == ProviderKind::Files) {
-    static_assert(std::same_as<meta::TypeObject<Parameter>, Path>,
+    static_assert(std::same_as<std::remove_cvref_t<typename [: std::meta::type_of(Parameter) :]>, Path>,
         "Switch [[= files(...)]] bindings must target a Path parameter.");
   } else {
     static_assert(not hasFileModifiers<Function, Parameter>(),
@@ -195,7 +195,7 @@ template <std::meta::info Function, std::meta::info Parameter, class Callback>
 constexpr auto forEachValues(Callback &&callback) -> void {
   constexpr auto valueList = valuesAnnotation<Function, Parameter>();
   valueList.apply([&callback](const auto &...items) -> void {
-    (std::invoke(std::forward<Callback>(callback), meta::TypeObject<Parameter>(items)), ...);
+    (std::invoke(std::forward<Callback>(callback), typename [: std::meta::type_of(Parameter) :](items)), ...);
   });
 }
 
@@ -223,7 +223,7 @@ constexpr auto fileQuery() -> FileQuery {
   template for (constexpr ParameterProperty property :
       ReflectedFunctionMetadata<Function>::parameterProperties) {
     if constexpr (property.parameter == Parameter) {
-      using Annotation = meta::TypeObject<property.annotation>;
+      using Annotation = typename [: std::meta::type_of(property.annotation) :];
 
       if constexpr (property.legacy) {
         constexpr Annotation argument = std::meta::extract<Annotation>(property.annotation);
@@ -254,7 +254,7 @@ constexpr auto forEachProviderValue(Callback &&callback) -> void {
   else if constexpr (providerKindOf<Function, Parameter>() == ProviderKind::Files)
     forEachFiles<Function, Parameter>(std::forward<Callback>(callback));
   else
-    static_assert(meta::always_false_v<meta::TypeObject<Parameter>>,
+    static_assert((!std::same_as<typename [: std::meta::type_of(Parameter) :], typename [: std::meta::type_of(Parameter) :]>),
         "Switch attempted to enumerate a parameter without a provider binding.");
 }
 
@@ -361,7 +361,7 @@ auto appendProviderDescription(String &result, const Tuple &values) -> void {
   if constexpr (ProviderIndex < std::tuple_size_v<std::remove_cvref_t<Tuple>>) {
     constexpr usize parameterIndex = providerParameterIndex<Function, ProviderIndex>();
     constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[parameterIndex];
-    constexpr StringView name = meta::identifier<parameter>;
+    constexpr StringView name = std::meta::identifier_of(parameter);
 
     if (not result.empty())
       result.append(", ");
@@ -386,7 +386,7 @@ auto appendMissingProviderDescription(String &result) -> void {
   if constexpr (ProviderIndex < providerParameterCount<Function>()) {
     constexpr usize parameterIndex = providerParameterIndex<Function, ProviderIndex>();
     constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[parameterIndex];
-    constexpr StringView name = meta::identifier<parameter>;
+    constexpr StringView name = std::meta::identifier_of(parameter);
 
     if (not result.empty())
       result.append(", ");

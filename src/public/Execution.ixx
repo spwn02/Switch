@@ -368,7 +368,7 @@ auto normalizeReturn(Return &&returned, NormalizationContext &context) -> void {
     diagnostic.details.spans.front().selection = SpanSelection::Declaration;
     context.environment.get().recordFailure(std::move(diagnostic));
   } else {
-    static_assert(meta::always_false_v<Type>,
+    static_assert((!std::same_as<Type, Type>),
         "Switch functions must return void, a bool-testable value, or Result<T>, or Task<T>.");
   }
 }
@@ -504,13 +504,14 @@ struct ActiveExecution final {
                     .retry = invocation.retry,
                 },
             .warmup = invocation.warmup,
-        },
-  wallStarted(invocation.captureTiming == CapturePolicy::PerAttempt ? std::chrono::steady_clock::now()
-                                       : std::chrono::steady_clock::time_point{}),
-  memoryBefore(invocation.captureMemory ? memory::processMemory() : None),
-  environment{},
-  runLoop{timeMode, environment.stopToken()},
-  captureProfile(invocation.captureProfile) {
+        }
+      , wallStarted(invocation.captureTiming == CapturePolicy::PerAttempt
+                        ? std::chrono::steady_clock::now()
+                        : std::chrono::steady_clock::time_point{})
+      , memoryBefore(invocation.captureMemory ? memory::processMemory() : None)
+      , environment{}
+      , runLoop{timeMode, environment.stopToken()}
+      , captureProfile(invocation.captureProfile) {
   }
 
   auto prepare(const InvocationSettings &invocation) -> void {

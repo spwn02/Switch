@@ -19,7 +19,7 @@ auto containsHighlighted(const Vec<DiagnosticFragment> &fragments, StringView te
     -> void {
   const auto location = std::source_location::current();
 
-  Diagnostic diagnostic{};
+  Switch::Diagnostic diagnostic{};
 
   {
     constexpr u32 value{2};

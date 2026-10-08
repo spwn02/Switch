@@ -7,9 +7,9 @@ using namespace Switch;
 
 namespace Tests::diagnostics {
 
-auto makeDiagnosticForRendering() -> Diagnostic {
+auto makeDiagnosticForRendering() -> Switch::Diagnostic {
   const auto location = std::source_location::current();
-  Diagnostic diagnostic = makeDiagnostic(DiagnosticCode::AssertionFailed, location);
+  Switch::Diagnostic diagnostic = makeDiagnostic(DiagnosticCode::AssertionFailed, location);
   diagnostic.details.spans.clear();
   diagnostic.addSpan(makeSpan("left value", SpanKind::Primary, location, SpanSelection::EnclosingExpression));
   diagnostic.addNote("left: 2");
@@ -28,7 +28,7 @@ auto makeDiagnosticForRendering() -> Diagnostic {
   return diagnostic;
 }
 [[ = test, = group("framework"), = tag("diagnostics") ]] auto diagnostics() -> void {
-  const Diagnostic diagnostic = makeDiagnosticForRendering();
+  const Switch::Diagnostic diagnostic = makeDiagnosticForRendering();
   const SourceSpan &primary = diagnostic.primarySpan()->get();
   const usize lineNumberWidth = std::to_string(primary.location.line()).size();
   const String locationPrefix = String(lineNumberWidth - 1, ' ') + "--> ";
@@ -40,35 +40,35 @@ auto makeDiagnosticForRendering() -> Diagnostic {
   const Option<SourceResolution> resolution = sources.resolve(multiLine);
   require(resolution);
 
-  Diagnostic multiLineDiagnostic = makeDiagnostic(DiagnosticCode::AssertionFailed);
+  Switch::Diagnostic multiLineDiagnostic = makeDiagnostic(DiagnosticCode::AssertionFailed);
   multiLineDiagnostic.details.spans.clear();
   multiLineDiagnostic.addSpan(multiLine);
 
   const String multiLineOutput = renderToString(multiLineDiagnostic,
       sources,
-      RendererOptions{.color = ColorMode::Never, .terminal = false, .showSource = true});
+      RendererOptions{.color = Switch::ColorMode::Never, .terminal = false, .showSource = true});
 
   const String plain = renderToString(diagnostic,
       sources,
-      RendererOptions{.color = ColorMode::Never, .terminal = false, .showSource = true, .tabWidth = 4});
+      RendererOptions{.color = Switch::ColorMode::Never, .terminal = false, .showSource = true, .tabWidth = 4});
 
   const String compact = renderToString(diagnostic,
       sources,
       RendererOptions{
-          .color = ColorMode::Never,
+          .color = Switch::ColorMode::Never,
           .terminal = false,
           .showSource = false,
-          .details = DetailMode::None,
+          .details = Switch::DetailMode::None,
       });
 
   const String coloured = renderToString(diagnostic,
       sources,
-      RendererOptions{.color = ColorMode::Always, .terminal = false, .showSource = true, .tabWidth = 4});
+      RendererOptions{.color = Switch::ColorMode::Always, .terminal = false, .showSource = true, .tabWidth = 4});
 
   const String headerOnly = renderToString(diagnostic,
       sources,
       RendererOptions{
-          .color = ColorMode::Never,
+          .color = Switch::ColorMode::Never,
           .terminal = false,
           .sections = DiagnosticSection::Header,
       });
@@ -76,12 +76,12 @@ auto makeDiagnosticForRendering() -> Diagnostic {
   const String hidden = renderToString(diagnostic,
       sources,
       RendererOptions{
-          .color = ColorMode::Never,
+          .color = Switch::ColorMode::Never,
           .terminal = false,
           .sections = DiagnosticSection::None,
       });
 
-  Diagnostic custom = makeDiagnostic(DiagnosticCode::AssertionFailed);
+  Switch::Diagnostic custom = makeDiagnostic(DiagnosticCode::AssertionFailed);
   custom.header.descriptionOverride = "custom diagnostic description";
 
   check(diagnostic.code() == "E001"_exp);

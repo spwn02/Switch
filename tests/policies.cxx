@@ -13,7 +13,7 @@ namespace PolicySubjects {
 
 [[ = test, = group("framework"), = tag("policies", "subjects"), = shouldPanic("explicit panic") ]] auto
 explicitPanic() -> void {
-  panic("explicit panic");
+  Switch::panic("explicit panic");
 }
 
 [[ = test, = group("framework"), = tag("policies", "subjects"), = shouldPanic("returned error") ]] auto
@@ -104,7 +104,7 @@ auto executionNamed(const Vec<TestExecution> &executions, StringView identifier)
           .identifier = "panicsAtCallSite",
           .location = location,
       },
-      [location] -> void { panic("call-site panic", location); });
+      [location] -> void { Switch::panic("call-site panic", location); });
 
   require(execution.failed());
   require(execution.state.errors == 1_exp);
@@ -127,7 +127,7 @@ auto executionNamed(const Vec<TestExecution> &executions, StringView identifier)
       },
       [] -> void {
         check(false);
-        panic("expected panic");
+        Switch::panic("expected panic");
       });
 
   require(execution.failed());
@@ -151,9 +151,9 @@ auto executionNamed(const Vec<TestExecution> &executions, StringView identifier)
       ReporterOptions{
           .renderer =
               RendererOptions{
-                  .color = ColorMode::Never,
+                  .color = Switch::ColorMode::Never,
                   .terminal = false,
-                  .details = DetailMode::Trace,
+                  .details = Switch::DetailMode::Trace,
               },
       },
   };

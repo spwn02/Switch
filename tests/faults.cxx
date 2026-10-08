@@ -1,3 +1,5 @@
+#include <csignal>
+
 import std;
 
 import Miracle;
@@ -12,9 +14,9 @@ namespace Tests::faults {
 namespace FaultSubjects {
 
 [[ = test, = group("framework"), = tag("faults", "subjects"), = isolated ]] auto aborts() -> void {
-  usize *invalidPointer = reinterpret_cast<usize *>(0x1);
-  std::println("{}", *invalidPointer);
-
+  // Inject a native segmentation fault directly instead of dereferencing an invalid pointer.
+  // The latter triggers undefined-behavior instrumentation before the worker's fault handler.
+  std::raise(SIGSEGV);
   std::abort();
 }
 
@@ -48,6 +50,8 @@ namespace FilteredSubjects {
   });
 }
 
+// require() terminates failing tests, a control flow that clang-tidy cannot infer here.
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 [[ = test, = trace, = group("framework"), = tag("faults", "isolation"), = parent ]] auto
 continuesUnrelatedCasesAfterANativeFault() -> void {
   const Vec<TestExecution> executions = runAllDetailed<^^FaultSubjects>(RunOptions{
@@ -98,6 +102,8 @@ stopsAfterANativeFaultWhenFailFastIsEnabled() -> void {
   check(output.str().contains("worker terminated with signal code 139 (segmentation fault)"));
   check(executions.front().state.diagnostics.front().header.code == DiagnosticCode::NativeFault);
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)
 
 [[ = test, = group("framework"), = tag("faults", "isolation", "filtered"), = parent ]] auto
 preservesFilteredPlanIdentityInAWorker() -> void {

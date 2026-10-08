@@ -212,7 +212,7 @@ auto delayedValue() -> Task<i32> {
       ReporterOptions{
           .renderer =
               RendererOptions{
-                  .color = ColorMode::Never,
+                  .color = Switch::ColorMode::Never,
                   .terminal = false,
                   .showSource = false,
               },

@@ -23,7 +23,8 @@ template <std::meta::info Namespace>
 class FixtureResolver;
 
 template <std::meta::info Namespace, std::meta::info FixtureFunction>
-auto invokeFixture(FixtureResolver<Namespace> &resolver) -> meta::ReturnObject<FixtureFunction>;
+auto invokeFixture(FixtureResolver<Namespace> &resolver)
+    -> std::remove_cvref_t<typename[:std::meta::return_type_of(FixtureFunction):]>;
 
 template <std::meta::info Function>
 consteval auto isFixture() -> bool {
@@ -64,14 +65,14 @@ inline constexpr bool is_value_or_const_reference_v =
 
 template <std::meta::info Parameter>
 consteval auto validateInputParameter() -> void {
-  static_assert(is_value_or_const_reference_v<meta::TypeObject<Parameter>>,
+  static_assert(is_value_or_const_reference_v<typename[:std::meta::type_of(Parameter):]>,
       "Switch injected parameters must be values or const lvalue references.");
 }
 
 template <std::meta::info Parameter>
 consteval auto validateContextParameter() -> void {
   validateInputParameter<Parameter>();
-  static_assert(std::same_as<meta::TypeObject<Parameter>, Context>,
+  static_assert(std::same_as<std::remove_cvref_t<typename[:std::meta::type_of(Parameter):]>, Context>,
       "Switch [[= arg<\"name\">(context)]] parameters must have type Context.");
 }
 
@@ -79,27 +80,30 @@ template <std::meta::info FixtureFunction>
 consteval auto validateFixtureSignature() -> void {
   validateArgumentBindings<FixtureFunction>();
   static_assert(
-      not std::same_as<meta::ReturnObject<FixtureFunction>, void>, "Switch fixtures must return a value.");
-  static_assert(not is_task_return_v<meta::ReturnObject<FixtureFunction>>,
+      not std::same_as<std::remove_cvref_t<typename[:std::meta::return_type_of(FixtureFunction):]>, void>,
+      "Switch fixtures must return a value.");
+  static_assert(
+      not is_task_return_v<std::remove_cvref_t<typename[:std::meta::return_type_of(FixtureFunction):]>>,
       "Switch fixtures must return a concrete value, not Task<T>.");
-  static_assert(not std::is_reference_v<meta::Return<FixtureFunction>>,
+  static_assert(not std::is_reference_v<typename[:std::meta::return_type_of(FixtureFunction):]>,
       "Switch fixtures must return a concrete value, not a reference.");
-  static_assert(std::constructible_from<meta::ReturnObject<FixtureFunction>, meta::Return<FixtureFunction>>,
+  static_assert(
+      std::constructible_from<std::remove_cvref_t<typename[:std::meta::return_type_of(FixtureFunction):]>,
+          typename[:std::meta::return_type_of(FixtureFunction):]>,
       "Switch fixture return values must construct their declared type.");
 }
 
 template <std::meta::info FixtureFunction, class Value>
 consteval auto providesFixture() -> bool {
   validateFixtureSignature<FixtureFunction>();
-  return std::same_as<meta::ReturnObject<FixtureFunction>, Value>;
+  return std::same_as<std::remove_cvref_t<typename[:std::meta::return_type_of(FixtureFunction):]>, Value>;
 }
 
 template <std::meta::info Namespace, class Value>
 consteval auto fixtureCount() -> usize {
   usize count{};
 
-  template for (constexpr std::meta::info member :
-      meta::members<Namespace, meta::AccessContext::unchecked()>) {
+  template for (constexpr std::meta::info member : meta::members(Namespace)) {
     if constexpr (isFixture<member>()) {
       if constexpr (providesFixture<member, Value>())
         ++count;
@@ -119,8 +123,7 @@ consteval auto fixtureFor() -> std::meta::info {
   static_assert(fixtureCount<Namespace, Value>() == 1,
       "Switch fixture injection requires exactly one [[= fixture]] for the requested parameter type.");
 
-  template for (constexpr std::meta::info member :
-      meta::members<Namespace, meta::AccessContext::unchecked()>) {
+  template for (constexpr std::meta::info member : meta::members(Namespace)) {
     if constexpr (isFixture<member>()) {
       if constexpr (providesFixture<member, Value>())
         return member;
@@ -148,7 +151,7 @@ consteval auto validateFixtureDependency() -> void {
                     directPropertyCount<FixtureFunction, Parameter>() == 0,
       "Switch fixture parameters are dependencies and cannot use parameter provider annotations.");
 
-  using Value = meta::TypeObject<Parameter>;
+  using Value = std::remove_cvref_t<typename[:std::meta::type_of(Parameter):]>;
   constexpr usize candidateCount = fixtureCount<Namespace, Value>();
 
   if constexpr (candidateCount == 0) {
@@ -177,15 +180,15 @@ consteval auto validateFixtureDependencyGraph() -> void {
       "Switch fixture dependencies cannot form a cycle.");
   validateFixtureSignature<FixtureFunction>();
 
-  template for (constexpr std::meta::info parameter : ReflectedFunctionMetadata<FixtureFunction>::parameters) {
+  template for (constexpr std::meta::info parameter :
+      ReflectedFunctionMetadata<FixtureFunction>::parameters) {
     validateFixtureDependency<Namespace, FixtureFunction, parameter, Path...>();
   }
 }
 
 template <std::meta::info Namespace>
 consteval auto fixtureDeclarationsAreValid() -> bool {
-  template for (constexpr std::meta::info member :
-      meta::members<Namespace, meta::AccessContext::unchecked()>) {
+  template for (constexpr std::meta::info member : meta::members(Namespace)) {
     if constexpr (std::meta::is_function(member)) {
       if constexpr (isFixture<member>())
         validateFixtureDependencyGraph<Namespace, member>();
@@ -225,7 +228,7 @@ consteval auto hasAutomaticFixtureParameter() -> bool {
     return false;
   } else {
     constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
-    using Value = meta::TypeObject<parameter>;
+    using Value = std::remove_cvref_t<typename[:std::meta::type_of(parameter):]>;
 
     if constexpr (isContextParameter<Function, parameter>() or isFromCaseParameter<Function, parameter>() or
                   detail::isProviderParameter<Function, parameter>()) {
@@ -260,7 +263,7 @@ consteval auto hasOnceFixtureParameter() -> bool {
     return false;
   } else {
     constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
-    using Value = meta::TypeObject<parameter>;
+    using Value = std::remove_cvref_t<typename[:std::meta::type_of(parameter):]>;
 
     if constexpr (hasFixtureFor<Namespace, Value>()) {
       return isOnce<fixtureFor<Namespace, Value>()>() or
@@ -382,18 +385,21 @@ template <std::meta::info Namespace, std::meta::info FixtureFunction, usize Para
 auto fixtureDependencyArgument(FixtureResolver<Namespace> &resolver) -> decltype(auto) {
   constexpr std::meta::info parameter =
       ReflectedFunctionMetadata<FixtureFunction>::parameters[ParameterIndex];
-  using Value = meta::TypeObject<parameter>;
+  using Value = std::remove_cvref_t<typename[:std::meta::type_of(parameter):]>;
   return resolver.template resolve<Value>();
 }
 
 template <std::meta::info Namespace, std::meta::info FixtureFunction>
-auto invokeFixture(FixtureResolver<Namespace> &resolver) -> meta::ReturnObject<FixtureFunction> {
+auto invokeFixture(FixtureResolver<Namespace> &resolver)
+    -> std::remove_cvref_t<typename[:std::meta::return_type_of(FixtureFunction):]> {
   constexpr usize parameterCount = ReflectedFunctionMetadata<FixtureFunction>::parameters.size();
 
-  return withIndices<parameterCount>([&]<usize... Indices>(std::integral_constant<usize, Indices>...)
-                                         -> meta::ReturnObject<FixtureFunction> {
-    return [:FixtureFunction:](fixtureDependencyArgument<Namespace, FixtureFunction, Indices>(resolver)...);
-  });
+  return withIndices<parameterCount>(
+      [&]<usize... Indices>(std::integral_constant<usize, Indices>...)
+          -> std::remove_cvref_t<typename[:std::meta::return_type_of(FixtureFunction):]> {
+        return [:FixtureFunction:](
+            fixtureDependencyArgument<Namespace, FixtureFunction, Indices>(resolver)...);
+      });
 }
 
 template <std::meta::info Namespace, class Value>
@@ -422,7 +428,7 @@ auto FixtureScope<Namespace>::get(detail::FixtureResolver<Namespace> &resolver) 
 
     while (slot->state == FixtureState::Constructing) {
       if (slot->owner == std::this_thread::get_id())
-        fatal("Switch detected recursive fixture construction.");
+        panic("Switch detected recursive fixture construction.");
 
       slot->ready.wait(lock, [slot] -> bool { return slot->state != FixtureState::Constructing; });
     }
@@ -470,7 +476,7 @@ auto bindArgument(const Context &context,
     const CaseValues &caseValues,
     const ProviderValues &providerValues) -> decltype(auto) {
   constexpr std::meta::info parameter = ReflectedFunctionMetadata<Function>::parameters[ParameterIndex];
-  using Value = meta::TypeObject<parameter>;
+  using Value = std::remove_cvref_t<typename[:std::meta::type_of(parameter):]>;
   constexpr usize caseValueCount = std::tuple_size_v<std::remove_cvref_t<CaseValues>>;
   constexpr usize providerValueCount = std::tuple_size_v<std::remove_cvref_t<ProviderValues>>;
   validateProviderParameter<Function, parameter>();
@@ -484,7 +490,7 @@ auto bindArgument(const Context &context,
     if constexpr (index < providerValueCount) {
       return (std::get<index>(providerValues));
     } else {
-      static_assert(meta::always_false_v<Value>,
+      static_assert((!std::same_as<Value, Value>),
           "Switch did not receive enough provider values for its reflected test parameters.");
     }
   } else if constexpr (isContextParameter<Function, parameter>()) {
@@ -496,7 +502,7 @@ auto bindArgument(const Context &context,
     if constexpr (index < caseValueCount) {
       return (std::get<index>(caseValues));
     } else {
-      static_assert(meta::always_false_v<Value>,
+      static_assert((!std::same_as<Value, Value>),
           "Switch did not receive enough Case values for [[= arg<\"name\">(fromCase)]] parameters.");
     }
   } else if constexpr (hasFixtureFor<Namespace, Value>()) {
@@ -507,12 +513,12 @@ auto bindArgument(const Context &context,
     if constexpr (ParameterIndex < caseValueCount) {
       return (std::get<ParameterIndex>(caseValues));
     } else {
-      static_assert(meta::always_false_v<Value>,
+      static_assert((!std::same_as<Value, Value>),
           "Switch could not bind a legacy Case parameter. Add [[= arg<\"name\">(fromCase) for injected "
           "tests.");
     }
   } else {
-    static_assert(meta::always_false_v<Value>,
+    static_assert((!std::same_as<Value, Value>),
         "Switch could not bind this parameter. Use an [[= arg<\"name\">]] provider, [[= context]], or a "
         "fixture return type.");
   }
@@ -571,11 +577,14 @@ template <std::meta::info Namespace, std::meta::info Function, class CaseValues,
 auto invokeAsyncTest(const Context &context, // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     FixtureScope<Namespace> &suiteFixtures,  // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     CaseValues caseValues,
-    ProviderValues providerValues) -> Task<TaskValueType<meta::ReturnObject<Function>>> {
+    ProviderValues providerValues)
+    -> Task<TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>> {
   FixtureScope<Namespace> testFixtures{};
   FixtureResolver<Namespace> fixtures{testFixtures, suiteFixtures};
 
-  if constexpr (std::same_as<TaskValueType<meta::ReturnObject<Function>>, void>) {
+  if constexpr (std::same_as<
+                    TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>,
+                    void>) {
     co_await invokeTest<Namespace, Function>(context, fixtures, caseValues, providerValues);
     co_return;
   } else {
@@ -593,11 +602,14 @@ auto invokeAsyncMemberTest(
     FixtureScope<Namespace> &suiteFixtures, // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     Subject &subject,                       // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     CaseValues caseValues,
-    ProviderValues providerValues) -> Task<TaskValueType<meta::ReturnObject<Function>>> {
+    ProviderValues providerValues)
+    -> Task<TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>> {
   FixtureScope<Namespace> testFixtures{};
   FixtureResolver<Namespace> fixtures{testFixtures, suiteFixtures};
 
-  if constexpr (std::same_as<TaskValueType<meta::ReturnObject<Function>>, void>) {
+  if constexpr (std::same_as<
+                    TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>,
+                    void>) {
     co_await invokeMemberTest<Namespace, Function>(context, fixtures, subject, caseValues, providerValues);
     co_return;
   } else {
@@ -611,11 +623,14 @@ auto invokeAsyncFromFixture(
     const Context &context,                 // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     FixtureScope<Namespace> &suiteFixtures, // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     CaseValues caseValues,
-    ProviderValues providerValues) -> Task<TaskValueType<meta::ReturnObject<Function>>> {
+    ProviderValues providerValues)
+    -> Task<TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>> {
   FixtureScope<Namespace> testFixtures{};
   FixtureResolver<Namespace> fixtures{testFixtures, suiteFixtures};
 
-  if constexpr (std::same_as<TaskValueType<meta::ReturnObject<Function>>, void>) {
+  if constexpr (std::same_as<
+                    TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>,
+                    void>) {
     co_await invokeWithFixtures<Namespace, Function>(context, suiteFixtures, caseValues, providerValues);
     co_return;
   } else {
@@ -629,13 +644,16 @@ auto invokeAsyncMemberFromFixture(
     const Context &context,                 // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     FixtureScope<Namespace> &suiteFixtures, // NOLINT(cppcoreguidelines-avoid-reference-coroutine-parameters)
     CaseValues caseValues,
-    ProviderValues providerValues) -> Task<TaskValueType<meta::ReturnObject<Function>>> {
-  using Subject = meta::TypeObject<std::meta::parent_of(Function)>;
+    ProviderValues providerValues)
+    -> Task<TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>> {
+  using Subject = typename[:std::meta::parent_of(Function):];
   FixtureScope<Namespace> testFixtures{};
   FixtureResolver<Namespace> fixtures{testFixtures, suiteFixtures};
   Subject &subject = fixtures.template resolve<Subject>();
 
-  if constexpr (std::same_as<TaskValueType<meta::ReturnObject<Function>>, void>) {
+  if constexpr (std::same_as<
+                    TaskValueType<std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>>,
+                    void>) {
     co_await invokeMemberTest<Namespace, Function>(context, fixtures, subject, caseValues, providerValues);
     co_return;
   } else {
@@ -649,8 +667,8 @@ auto invokeMemberFromFixture(const Context &context,
     FixtureScope<Namespace> &suiteFixtures,
     const CaseValues &caseValues,
     const ProviderValues &providerValues) -> decltype(auto) {
-  using Subject = meta::TypeObject<std::meta::parent_of(Function)>;
-  using Return = meta::ReturnObject<Function>;
+  using Subject = typename[:std::meta::parent_of(Function):];
+  using Return = std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>;
 
   if constexpr (is_task_return_v<std::remove_cvref_t<Return>>) {
     static_assert(not std::is_lvalue_reference_v<Return>,
@@ -672,7 +690,7 @@ auto invokeWithFixtures(const Context &context,
     FixtureScope<Namespace> &suiteFixtures,
     const CaseValues &caseValues,
     const ProviderValues &providerValues) -> decltype(auto) {
-  using Return = meta::ReturnObject<Function>;
+  using Return = std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>;
 
   if constexpr (is_task_return_v<std::remove_cvref_t<Return>>) {
     static_assert(not std::is_lvalue_reference_v<Return>,
@@ -695,7 +713,7 @@ auto invokeMemberWithFixtures(const Context &context,
     Subject &subject,
     const CaseValues &caseValues,
     const ProviderValues &providerValues) -> decltype(auto) {
-  using Return = meta::ReturnObject<Function>;
+  using Return = std::remove_cvref_t<typename[:std::meta::return_type_of(Function):]>;
 
   if constexpr (is_task_return_v<std::remove_cvref_t<Return>>) {
     static_assert(not std::is_lvalue_reference_v<Return>,

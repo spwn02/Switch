@@ -144,7 +144,7 @@ struct ArgumentTraits<Argument<Name, Properties...>> final {
 
 template <std::meta::info Parameter, class ArgumentType>
 consteval auto argumentTargetsParameter() -> bool {
-  return ArgumentTraits<ArgumentType>::name() == meta::identifier<Parameter>;
+  return ArgumentTraits<ArgumentType>::name() == std::meta::identifier_of(Parameter);
 }
 
 template <std::meta::info Parameter, class ArgumentType>
@@ -181,7 +181,7 @@ template <std::meta::info Function>
 consteval auto makeCaseAnnotations() -> auto {
   Vec<std::meta::info> result{};
 
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
+  template for (constexpr std::meta::info annotation : meta::annotations(Function)) {
     if constexpr (is_case_annotation_v<annotation>)
       result.emplace_back(annotation);
   }
@@ -193,8 +193,8 @@ template <std::meta::info Function>
 consteval auto makeArgumentAnnotations() -> auto {
   Vec<std::meta::info> result{};
 
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
-    using Annotation = meta::TypeObject<annotation>;
+  template for (constexpr std::meta::info annotation : meta::annotations(Function)) {
+    using Annotation = typename [: std::meta::type_of(annotation) :];
 
     if constexpr (is_argument_v<Annotation>)
       result.emplace_back(annotation);
@@ -207,8 +207,8 @@ template <std::meta::info Function, template <class> class Predicate>
 consteval auto makeTypedAnnotations() -> auto {
   Vec<std::meta::info> result{};
 
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
-    using Annotation = meta::TypeObject<annotation>;
+  template for (constexpr std::meta::info annotation : meta::annotations(Function)) {
+    using Annotation = typename [: std::meta::type_of(annotation) :];
 
     if constexpr (Predicate<Annotation>::value)
       result.emplace_back(annotation);
@@ -221,20 +221,20 @@ template <std::meta::info Function>
 consteval auto makeParameterProperties() -> auto {
   Vec<ParameterProperty> result{};
 
-  template for (constexpr std::meta::info parameter : meta::parameters<Function>) {
-    template for (constexpr std::meta::info annotation : meta::annotations<parameter>) {
-      using Annotation = meta::TypeObject<annotation>;
+  template for (constexpr std::meta::info parameter : meta::parameters(Function)) {
+    template for (constexpr std::meta::info annotation : meta::annotations(parameter)) {
+      using Annotation = typename [: std::meta::type_of(annotation) :];
 
       if constexpr (is_supported_property_v<Annotation>)
         result.emplace_back(parameter, annotation, false);
     }
   }
 
-  template for (constexpr std::meta::info annotation : meta::annotations<Function>) {
-    using Annotation = meta::TypeObject<annotation>;
+  template for (constexpr std::meta::info annotation : meta::annotations(Function)) {
+    using Annotation = typename [: std::meta::type_of(annotation) :];
 
     if constexpr (is_argument_v<Annotation>) {
-      template for (constexpr std::meta::info parameter : meta::parameters<Function>) {
+      template for (constexpr std::meta::info parameter : meta::parameters(Function)) {
         if constexpr (argumentTargetsParameter<parameter, Annotation>()) {
           result.emplace_back(parameter, annotation, true);
         }
@@ -252,8 +252,8 @@ consteval auto makeParameterProperties() -> auto {
 /// parameters. `ParameterProperty` unifies direct annotations with legacy `arg<...>` data.
 template <std::meta::info Function>
 struct ReflectedFunctionMetadata final {
-  static constexpr auto &annotations = meta::annotations<Function>;
-  static constexpr auto &parameters = meta::parameters<Function>;
+  static constexpr auto annotations = meta::annotations(Function);
+  static constexpr auto parameters = meta::parameters(Function);
   static constexpr auto cases = makeCaseAnnotations<Function>();
   static constexpr auto arguments = makeArgumentAnnotations<Function>();
   static constexpr auto descriptions = makeTypedAnnotations<Function, IsDescription>();
@@ -294,7 +294,7 @@ consteval auto argumentBindingCount() -> usize {
   usize count{};
 
   template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::arguments) {
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename [: std::meta::type_of(annotation) :];
 
     if constexpr (argumentTargetsParameter<Parameter, Annotation>())
       ++count;
@@ -320,7 +320,7 @@ consteval auto directPropertyCountFor() -> usize {
   template for (constexpr ParameterProperty property :
       ReflectedFunctionMetadata<Function>::parameterProperties) {
     if constexpr (property.parameter == Parameter and not property.legacy) {
-      using Annotation = meta::TypeObject<property.annotation>;
+      using Annotation = typename [: std::meta::type_of(property.annotation) :];
 
       if constexpr (Predicate<Annotation>::value)
         ++count;
@@ -335,7 +335,7 @@ consteval auto legacyPropertyCount() -> usize {
   usize count{};
 
   template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::arguments) {
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename [: std::meta::type_of(annotation) :];
 
     if constexpr (argumentTargetsParameter<Parameter, Annotation>() and
                   ArgumentTraits<Annotation>::template contains<Predicate>())
@@ -353,7 +353,7 @@ consteval auto argumentPropertyCount() -> usize {
 
 template <std::meta::info Function, std::meta::info Parameter>
 consteval auto parameterSource() -> ParameterSource {
-  if constexpr (std::same_as<meta::TypeObject<Parameter>, Context> or
+  if constexpr (std::same_as<std::remove_cvref_t<typename [: std::meta::type_of(Parameter) :]>, Context> or
                 argumentPropertyCount<Function, Parameter, IsContextParameter>() != 0)
     return ParameterSource::Context;
   else if constexpr (argumentPropertyCount<Function, Parameter, IsFromCaseParameter>() != 0)

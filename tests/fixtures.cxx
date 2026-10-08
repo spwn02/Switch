@@ -43,7 +43,7 @@ auto resetFixtureCounters() -> void {
   };
 }
 
-[[ = fixture, = once ]] auto shared() -> Shared {
+[[ = fixture, = Switch::once ]] auto shared() -> Shared {
   ++sharedCreations;
   return Shared{
       .instance = 1,
@@ -181,7 +181,7 @@ auto resetDependencyCounters() -> void {
   destructions.clear();
 }
 
-[[ = fixture, = once ]] auto sharedSettings() -> SharedSettings {
+[[ = fixture, = Switch::once ]] auto sharedSettings() -> SharedSettings {
   ++settingsCreations;
   return SharedSettings{
       .revision = 69,
@@ -189,7 +189,7 @@ auto resetDependencyCounters() -> void {
   };
 }
 
-[[ = fixture, = once ]] auto sharedGateway(const SharedSettings &settings) -> SharedGateway {
+[[ = fixture, = Switch::once ]] auto sharedGateway(const SharedSettings &settings) -> SharedGateway {
   ++gatewayCreations;
   return SharedGateway{
       .settingsRevision = settings.revision,

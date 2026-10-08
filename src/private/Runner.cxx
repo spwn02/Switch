@@ -132,7 +132,7 @@ private:
 [[nodiscard]] auto scheduleCases(usize plannedCaseCount, const RunOptions &options, u64 runSeed)
     -> Vec<ScheduledCase> {
   if (options.repeat == 0)
-    fatal("Switch RunOptions::repeat must be greater than zero");
+    panic("Switch RunOptions::repeat must be greater than zero");
 
   Vec<ScheduledCase> scheduled{};
   scheduled.reserve(plannedCaseCount * options.repeat);
@@ -374,8 +374,8 @@ private:
     }
 
     if (plan.accumulator) {
-      AttemptOutcome outcome = executeAttemptOutcome(
-          plan_, attempt, warmup, plan.options.get().retention == RetentionPolicy::All);
+      AttemptOutcome outcome =
+          executeAttemptOutcome(plan_, attempt, warmup, plan.options.get().retention == RetentionPolicy::All);
       const AttemptObservation observation{
           .passed = outcome.passed,
           .timeout = outcome.timeout,
@@ -489,16 +489,19 @@ auto executeCase(const InvocationPlan &plan) -> Vec<TestExecution> {
   const RunOptions &options = plan.options.get();
   const TestPolicy &policy = plan.plannedCase.get().descriptor().policy;
   return options.executionMode == ExecutionMode::Benchmark and options.retention != RetentionPolicy::All and
-         not options.captureMemory and not options.captureProfile and not policy.trace and policy.warmup == 0 and
-         policy.retry == 0;
+         not options.captureMemory and not options.captureProfile and not policy.trace and
+         policy.warmup == 0 and policy.retry == 0;
 }
 
 auto executeBenchmarkCase(const InvocationPlan &plan, usize count) -> Vec<TestExecution> {
   BatchExecutionContext batch{};
   const AttemptIndex attempt{.runIteration = plan.scheduledCase.runIteration};
   const InvocationSettings settings{
-      .seed = deriveSeed(plan.runSeed, plan.plannedCase.get().descriptor().identifier,
-          plan.plannedCase.get().descriptor().testCase, attempt, false),
+      .seed = deriveSeed(plan.runSeed,
+          plan.plannedCase.get().descriptor().identifier,
+          plan.plannedCase.get().descriptor().testCase,
+          attempt,
+          false),
       .iteration = plan.scheduledCase.runIteration,
       .forceTrace = forceTrace(plan.options.get().traceMode),
       .captureProfile = false,
@@ -516,7 +519,9 @@ auto executeBenchmarkCase(const InvocationPlan &plan, usize count) -> Vec<TestEx
   if (batch.firstFailure)
     return Vec<TestExecution>{std::move(*batch.firstFailure)};
   TestExecution aggregate{.descriptor = plan.plannedCase.get().descriptor(),
-      .duration = batch.duration, .wallDuration = batch.wallDuration, .runSeed = plan.runSeed,
+      .duration = batch.duration,
+      .wallDuration = batch.wallDuration,
+      .runSeed = plan.runSeed,
       .attempt = attempt};
   aggregate.state.assertions = batch.assertions;
   return Vec<TestExecution>{std::move(aggregate)};
@@ -660,7 +665,7 @@ auto appendWorkerFailure(Vec<TestExecution> &executions,
 
   execution.runSeed = plan.runSeed;
   execution.iteration = plan.scheduledCase.runIteration;
-    execution.attempt = journal.activeAttempt.value_or(AttemptIndex{
+  execution.attempt = journal.activeAttempt.value_or(AttemptIndex{
       .runIteration = plan.scheduledCase.runIteration,
   });
   execution.warmup = journal.activeWarmup;
@@ -725,9 +730,9 @@ auto appendWorkerProtocolFailure(Vec<TestExecution> &executions,
       .identifier = plan.plannedCase.get().descriptor().identifier,
       .plannedCase = plan.plannedCaseIndex,
       .runIteration = plan.scheduledCase.runIteration,
-      .repeat = usesBenchmark(plan)
-                    ? plan.options.get().repeat * std::max(plan.plannedCase.get().descriptor().policy.repeat, 1UZ)
-                    : 1,
+      .repeat = usesBenchmark(plan) ? plan.options.get().repeat *
+                                          std::max(plan.plannedCase.get().descriptor().policy.repeat, 1UZ)
+                                    : 1,
       .runSeed = plan.runSeed,
       .timeMode = plan.options.get().timeMode,
       .traceMode = plan.options.get().traceMode,
@@ -850,7 +855,8 @@ auto appendWorkerOutcome(Vec<TestExecution> &executions,
       plan.accumulator->get().appendAggregate(plan.plannedCase.get().descriptor(), batch, plan.runSeed);
     else {
       TestExecution aggregate{.descriptor = plan.plannedCase.get().descriptor(),
-          .duration = batch.duration, .wallDuration = batch.wallDuration,
+          .duration = batch.duration,
+          .wallDuration = batch.wallDuration,
           .runSeed = plan.runSeed,
           .seed = deriveSeed(plan.runSeed,
               plan.plannedCase.get().descriptor().identifier,
@@ -994,7 +1000,7 @@ private:
       if (context.accumulator) {
         std::ranges::for_each(
             batch, [&accumulator = context.accumulator](const TestExecution &execution) -> void {
-            accumulator->get().append(execution);
+              accumulator->get().append(execution);
             });
         context.accumulator->get().completeCase(
             context.plannedCases.get()[scheduledCases[index].plannedCase].descriptor().identifier);
@@ -1112,10 +1118,11 @@ auto executeWorkerCase(RunSession &session, const WorkerRequest &request, RunOpt
       .plannedCase = std::cref(plannedCases[plannedCase]),
       .capabilities = plannedCases[plannedCase].capabilities(),
       .plannedCaseIndex = request.plannedCase,
-      .scheduledCase = ScheduledCase{
-          .plannedCase = request.plannedCase,
-          .runIteration = request.runIteration,
-      },
+      .scheduledCase =
+          ScheduledCase{
+              .plannedCase = request.plannedCase,
+              .runIteration = request.runIteration,
+          },
       .options = options,
       .runSeed = request.runSeed,
       .isolation = CrashIsolation::InProcess,
@@ -1144,9 +1151,11 @@ auto executeWorkerCase(RunSession &session, const WorkerRequest &request, RunOpt
   } else {
     BatchExecutionContext batch{};
     const InvocationSettings settings{
-        .seed = deriveSeed(request.runSeed, plannedCases[plannedCase].descriptor().identifier,
+        .seed = deriveSeed(request.runSeed,
+            plannedCases[plannedCase].descriptor().identifier,
             plannedCases[plannedCase].descriptor().testCase,
-            AttemptIndex{.runIteration = request.runIteration}, false),
+            AttemptIndex{.runIteration = request.runIteration},
+            false),
         .iteration = request.runIteration,
         .captureProfile = false,
         .captureTiming = request.captureTiming,

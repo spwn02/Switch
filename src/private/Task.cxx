@@ -194,7 +194,7 @@ auto currentRunLoop() noexcept -> RunLoop * {
 auto schedule(std::coroutine_handle<> handle) -> void {
   RunLoop *const runLoop = currentRunLoop();
   if (runLoop == nullptr)
-    fatal("Switch Task suspension requires an active test run loop.");
+    panic("Switch Task suspension requires an active test run loop.");
 
   runLoop->enqueue(handle);
 }
@@ -202,7 +202,7 @@ auto schedule(std::coroutine_handle<> handle) -> void {
 auto scheduleAfter(std::coroutine_handle<> handle, RunLoop::Clock::duration duration) -> void {
   RunLoop *const runLoop = currentRunLoop();
   if (runLoop == nullptr)
-    fatal("Switch Task suspension requires an active test run loop.");
+    panic("Switch Task suspension requires an active test run loop.");
 
   runLoop->scheduleAt(handle, runLoop->now() + duration);
 }

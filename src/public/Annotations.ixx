@@ -10,8 +10,8 @@ using namespace Miracle;
 export namespace Switch {
 
 template <usize N>
-consteval auto valueItem(const char (&item)[N]) -> meta::StaticString<N> {
-  return meta::StaticString<N>{item};
+consteval auto valueItem(const char (&item)[N]) -> StaticString<N> {
+  return StaticString<N>{item};
 }
 
 template <class Item>
@@ -25,14 +25,14 @@ export namespace Switch::diagnostics {
 
 template <usize Size>
 struct Message final {
-  meta::StaticString<Size> message_;
+  StaticString<Size> message_;
 
-  constexpr explicit Message(meta::StaticString<Size> message)
+  constexpr explicit Message(StaticString<Size> message)
       : message_(std::move(message)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return message_.apply();
+    return message_.view();
   }
 };
 
@@ -47,29 +47,29 @@ inline constexpr bool is_message_v{};
 template <usize Size>
 inline constexpr bool is_message_v<Message<Size>>{true};
 
-template <std::meta::info Info>
+template <meta::Info Info>
 consteval auto annotationMessage() -> StringView {
-  template for (constexpr std::meta::info annotation : meta::annotations<Info>) {
-    using Annotation = meta::TypeObject<annotation>;
+  template for (constexpr std::meta::info annotation : meta::annotations(Info)) {
+    using Annotation = typename[:std::meta::type_of(annotation):];
 
     if constexpr (is_message_v<Annotation>) {
-      return std::meta::extract<Annotation>(annotation).apply();
+      return std::define_static_object(std::meta::extract<Annotation>(annotation))->apply();
     }
   }
 
-  return meta::identifier<Info>;
+  return std::meta::identifier_of(Info);
 }
 
 template <usize Size>
 struct Prefix final {
-  meta::StaticString<Size> prefix_;
+  StaticString<Size> prefix_;
 
-  constexpr explicit Prefix(meta::StaticString<Size> prefix)
+  constexpr explicit Prefix(StaticString<Size> prefix)
       : prefix_(std::move(prefix)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return prefix_.apply();
+    return prefix_.view();
   }
 };
 
@@ -84,13 +84,13 @@ inline constexpr bool is_prefix_v{};
 template <usize Size>
 inline constexpr bool is_prefix_v<Prefix<Size>>{true};
 
-template <std::meta::info Item>
+template <meta::Info Item>
 consteval auto annotationPrefix() -> StringView {
-  template for (constexpr std::meta::info annotation : meta::annotations<Item>) {
-    using Annotation = meta::TypeObject<annotation>;
+  template for (constexpr std::meta::info annotation : meta::annotations(Item)) {
+    using Annotation = typename[:std::meta::type_of(annotation):];
 
     if constexpr (is_prefix_v<Annotation>) {
-      return std::meta::extract<Annotation>(annotation).apply();
+      return std::define_static_object(std::meta::extract<Annotation>(annotation))->apply();
     }
   }
 
@@ -152,14 +152,14 @@ inline constexpr Once once{};
 
 template <usize Size>
 struct Resource final {
-  meta::StaticString<Size> name_;
+  StaticString<Size> name_;
 
-  constexpr explicit Resource(meta::StaticString<Size> name)
+  constexpr explicit Resource(StaticString<Size> name)
       : name_(std::move(name)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return name_.apply();
+    return name_.view();
   }
 };
 
@@ -210,10 +210,10 @@ struct IncludeDotFiles final {};
 
 inline constexpr IncludeDotFiles includeDotFiles{};
 
-template <meta::StaticString Name>
+template <StaticString Name>
 struct ArgumentName final {
   [[nodiscard]] static constexpr auto apply() -> StringView {
-    return Name.apply();
+    return Name.view();
   }
 };
 
@@ -289,7 +289,7 @@ public:
   }
 };
 
-template <meta::StaticString Name>
+template <StaticString Name>
 inline constexpr ArgumentBuilder<ArgumentName<Name>{}> arg{};
 
 template <class... Items>
@@ -383,14 +383,14 @@ constexpr auto materializeCaseValue(const Value &value) -> decltype(auto) {
 
 template <usize Size>
 struct Files final {
-  meta::StaticString<Size> files_;
+  StaticString<Size> files_;
 
-  explicit constexpr Files(meta::StaticString<Size> files)
+  explicit constexpr Files(StaticString<Size> files)
       : files_(std::move(files)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return files_.apply();
+    return files_.view();
   }
 };
 
@@ -407,14 +407,14 @@ inline constexpr bool is_files_v<Files<Size>>{true};
 
 template <usize Size>
 struct Exclude final {
-  meta::StaticString<Size> exclude_;
+  StaticString<Size> exclude_;
 
-  explicit constexpr Exclude(meta::StaticString<Size> exclude)
+  explicit constexpr Exclude(StaticString<Size> exclude)
       : exclude_(std::move(exclude)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return exclude_.apply();
+    return exclude_.view();
   }
 };
 
@@ -431,14 +431,14 @@ inline constexpr bool is_exclude_v<Exclude<Size>>{true};
 
 template <usize Size>
 struct ShouldPanic final {
-  meta::StaticString<Size> message_;
+  StaticString<Size> message_;
 
-  explicit constexpr ShouldPanic(meta::StaticString<Size> message)
+  explicit constexpr ShouldPanic(StaticString<Size> message)
       : message_(std::move(message)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return message_.apply();
+    return message_.view();
   }
 };
 
@@ -483,7 +483,7 @@ struct Repeat final {
 
 consteval auto repeat(usize count) -> Repeat {
   if (count == 0)
-    fatal("Switch repeat() requires at least one measured sample.");
+    panic("Switch repeat() requires at least one measured sample.");
   return Repeat{.count = count};
 }
 
@@ -515,14 +515,14 @@ consteval auto retry(usize count) -> Retry {
 
 template <usize Size>
 struct Description final {
-  meta::StaticString<Size> description_;
+  StaticString<Size> description_;
 
-  explicit constexpr Description(meta::StaticString<Size> description)
+  explicit constexpr Description(StaticString<Size> description)
       : description_(std::move(description)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return description_.apply();
+    return description_.view();
   }
 };
 
@@ -540,14 +540,14 @@ inline constexpr bool is_description_v<Description<Size>>{true};
 /// Assigns one presentation-oriented group to a test.
 template <usize Size>
 struct Group final {
-  meta::StaticString<Size> name_;
+  StaticString<Size> name_;
 
-  constexpr explicit Group(meta::StaticString<Size> name)
+  constexpr explicit Group(StaticString<Size> name)
       : name_(std::move(name)) {
   }
 
   [[nodiscard]] constexpr auto apply() const -> StringView {
-    return name_.apply();
+    return name_.view();
   }
 };
 
@@ -581,8 +581,8 @@ struct Tags final {
 
 template <usize... Sizes>
   requires(sizeof...(Sizes) != 0)
-consteval auto tag(const char (&...names)[Sizes]) -> Tags<meta::StaticString<Sizes>...> {
-  return Tags<meta::StaticString<Sizes>...>{valueItem(names)...};
+consteval auto tag(const char (&...names)[Sizes]) -> Tags<StaticString<Sizes>...> {
+  return Tags<StaticString<Sizes>...>{valueItem(names)...};
 }
 
 template <class>
@@ -605,10 +605,12 @@ struct Case final {
   consteval {
     std::meta::define_aggregate(^^Storage,
         {
-            std::meta::data_member_spec(^^Values, {.name = "_"})...});
+            std::meta::data_member_spec(^^Values,
+                {
+                    .name = "_"})...});
   }
 
-  static constexpr auto members_ = meta::nsMembers<^^Storage, meta::AccessContext::unchecked()>;
+  static constexpr auto members_ = meta::members<Storage>();
 
   Storage storage_;
 

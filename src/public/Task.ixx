@@ -218,7 +218,7 @@ protected:
   auto consumeResult(StringView alreadyConsumedMessage,
       std::source_location location = std::source_location::current()) -> void {
     if (resultTaken_)
-      fatal(alreadyConsumedMessage, {}, location);
+      panic(alreadyConsumedMessage, {}, location);
 
     resultTaken_ = true;
 
@@ -324,10 +324,10 @@ public:
 
   auto await_suspend(std::coroutine_handle<> continuation) -> bool {
     if (not handle_)
-      fatal("Switch cannot await an empty Task<T>.");
+      panic("Switch cannot await an empty Task<T>.");
 
     if (handle_.promise().hasContinuation())
-      fatal("Switch Task<T> may be awaited only once.");
+      panic("Switch Task<T> may be awaited only once.");
 
     handle_.promise().setContinuation(continuation);
     detail::schedule(handle_);
@@ -445,7 +445,7 @@ public:
       consumeResult("Switch Task<T> result may be read only once.");
 
       if (not value_)
-        fatal("Switch Task<T> completed without a value.");
+        panic("Switch Task<T> completed without a value.");
 
       return std::move(*value_);
     }
@@ -478,7 +478,7 @@ public:
   [[nodiscard]] auto takeResult() && -> Value {
     const Handle handle = storage_.handle();
     if (not handle or not handle.done())
-      fatal("Switch cannot read an incomplete Task<T>.");
+      panic("Switch cannot read an incomplete Task<T>.");
 
     return handle.promise().takeResult();
   }
@@ -556,7 +556,7 @@ public:
   auto takeResult() && -> void {
     const Handle handle = storage_.handle();
     if (not handle or not handle.done())
-      fatal("Switch cannot read an incomplete Task<T>.");
+      panic("Switch cannot read an incomplete Task<T>.");
 
     handle.promise().takeResult();
   }

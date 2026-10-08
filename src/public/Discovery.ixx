@@ -92,10 +92,10 @@ auto appendRegisteredSuite(const SuiteEntry &suite) -> void;
 /// Registers a scope that may need to be reconstructed by an exec'd test worker.
 auto appendWorkerSuite(const SuiteEntry &suite) -> void;
 
-template <std::meta::info Entity>
+template <meta::Info Entity>
 consteval auto appendQualifiedName(String &result) -> void {
   if constexpr (Entity != ^^::) {
-    constexpr std::meta::info parent = std::meta::parent_of(Entity);
+    constexpr meta::Info parent = std::meta::parent_of(Entity);
     if constexpr (parent != ^^::) {
       appendQualifiedName<parent>(result);
       if (not result.empty())
@@ -145,9 +145,9 @@ consteval auto descriptionOf() -> StringView {
     return {};
   } else {
     constexpr std::meta::info annotation = ReflectedFunctionMetadata<Function>::descriptions.front();
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename[:std::meta::type_of(annotation):];
 
-    return std::meta::extract<Annotation>(annotation).apply();
+    return std::define_static_object(std::meta::extract<Annotation>(annotation))->apply();
   }
 }
 
@@ -195,17 +195,17 @@ auto metadataOf() -> TestMetadata {
   };
 
   template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::groups) {
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename[:std::meta::type_of(annotation):];
 
     constexpr Annotation groupAnnotation = std::meta::extract<Annotation>(annotation);
     metadata.group = String{groupAnnotation.apply()};
   }
 
   template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::tags) {
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename[:std::meta::type_of(annotation):];
 
     constexpr Annotation tagAnnotation = std::meta::extract<Annotation>(annotation);
-    tagAnnotation.apply([&appendTag](const auto &...tags) -> void { (appendTag(tags.apply()), ...); });
+    tagAnnotation.apply([&appendTag](const auto &...tags) -> void { (appendTag(tags.view()), ...); });
   }
 
   return metadata;
@@ -215,8 +215,8 @@ template <std::meta::info Function>
 auto policyOf() -> TestPolicy {
   static_assert(shouldPanicCount<Function>() <= 1,
       "Switch tests may declare at most one [[= shouldPanic(...)]] annotation.");
-  static_assert(timeoutCount<Function>() <= 1,
-      "Switch tests may declare at most one [[= timeout(...)]] annotation.");
+  static_assert(
+      timeoutCount<Function>() <= 1, "Switch tests may declare at most one [[= timeout(...)]] annotation.");
   static_assert(
       repeatCount<Function>() <= 1, "Switch tests may declare at most one [[= repeat(...)]] annotation.");
   static_assert(
@@ -236,7 +236,7 @@ auto policyOf() -> TestPolicy {
   };
 
   template for (constexpr std::meta::info annotation : ReflectedFunctionMetadata<Function>::expectedPanics) {
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename[:std::meta::type_of(annotation):];
 
     constexpr Annotation expected = std::meta::extract<Annotation>(annotation);
     policy.expectedPanic = String{expected.apply()};
@@ -265,7 +265,7 @@ auto policyOf() -> TestPolicy {
 template <std::meta::info Function>
 auto makeTestDescriptor(usize testCase, StringView caseDescription = {}, StringView providerDescription = {})
     -> TestDescriptor {
-  constexpr StringView name = meta::identifier<Function>;
+  constexpr StringView name = std::meta::identifier_of(Function);
   String identifier{qualifiedNameOf<Function>()};
 
   if (not caseDescription.empty() or not providerDescription.empty()) {
@@ -316,7 +316,7 @@ auto appendProviderDescriptors(Vec<TestDescriptor> &descriptors,
 
 template <std::meta::info Function, std::meta::info Annotation>
 auto appendCaseDescriptors(Vec<TestDescriptor> &descriptors, usize &testCaseIndex) -> void {
-  using Ann = meta::TypeObject<Annotation>;
+  using Ann = typename[:std::meta::type_of(Annotation):];
   constexpr Ann testCase = std::meta::extract<Ann>(Annotation);
   const String caseDescription = testCase.describe();
 
@@ -356,7 +356,7 @@ consteval auto memberSubjectUsesOnceFixture() -> bool {
                 ReflectedFunctionMetadata<Function>::subjects.size() != 0) {
     return false;
   } else {
-    using Subject = meta::TypeObject<std::meta::parent_of(Function)>;
+    using Subject = typename[:std::meta::parent_of(Function):];
     return isOnce<fixtureFor<Namespace, Subject>()>();
   }
 }
@@ -367,7 +367,7 @@ consteval auto hasValidMemberSubject() -> bool {
                 ReflectedFunctionMetadata<Function>::subjects.size() != 0) {
     return true;
   } else {
-    using Subject = meta::TypeObject<std::meta::parent_of(Function)>;
+    using Subject = typename[:std::meta::parent_of(Function):];
     return hasFixtureFor<Namespace, Subject>();
   }
 }
@@ -414,10 +414,10 @@ consteval auto invocationCapabilities() // NOLINT(readability-function-cognitive
 
   if constexpr (member and subjectCount != 0) {
     constexpr std::meta::info annotation = ReflectedFunctionMetadata<Function>::subjects.front();
-    using Annotation = meta::TypeObject<annotation>;
+    using Annotation = typename[:std::meta::type_of(annotation):];
     constexpr Annotation subjectAnnotation = std::meta::extract<Annotation>(annotation);
     using SubjectValue = std::remove_cvref_t<decltype(subjectAnnotation.value())>;
-    using SubjectType = meta::TypeObject<std::meta::parent_of(Function)>;
+    using SubjectType = typename[:std::meta::parent_of(Function):];
 
     static_assert(std::same_as<SubjectValue, SubjectType>,
         "Switch [[= subject(...)]] must provide the member function's owning object type.");
@@ -429,9 +429,8 @@ consteval auto invocationCapabilities() // NOLINT(readability-function-cognitive
   StringView resourceLane{};
   if constexpr (resourceCount != 0) {
     constexpr std::meta::info annotation = ReflectedFunctionMetadata<Function>::resources.front();
-    using Annotation = meta::TypeObject<annotation>;
-    constexpr Annotation resourceAnnotation = std::meta::extract<Annotation>(annotation);
-    resourceLane = resourceAnnotation.apply();
+    using Annotation = typename[:std::meta::type_of(annotation):];
+    resourceLane = std::define_static_object(std::meta::extract<Annotation>(annotation))->apply();
   }
 
   constexpr bool sharesOnceFixture =
@@ -477,7 +476,7 @@ auto noProviderExecution(TestDescriptor descriptor, TimeMode timeMode) -> TestEx
       [location] -> void {
         const Option<Ref<TestEnvironment>> environment = currentEnvironment();
         if (not environment)
-          fatal("Switch could not report an empty provider without an active environment");
+          panic("Switch could not report an empty provider without an active environment");
 
         Diagnostic diagnostic = makeDiagnostic(DiagnosticCode::ProviderProducedNoValues, location);
         diagnostic.details.spans.front().label = "provider";
@@ -500,7 +499,7 @@ public:
         [] -> void {
           const Option<Ref<TestEnvironment>> environment = currentEnvironment();
           if (not environment)
-            fatal("Switch could not report an empty provider without an active environment");
+            panic("Switch could not report an empty provider without an active environment");
           Diagnostic diagnostic = makeDiagnostic(
               DiagnosticCode::ProviderProducedNoValues, detail::firstProviderLocation<Function>());
           diagnostic.details.spans.front().label = "provider";
@@ -510,14 +509,20 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [] -> void {
-      const Option<Ref<TestEnvironment>> environment = currentEnvironment();
-      if (not environment)
-        fatal("Switch could not report an empty provider without an active environment");
-      environment->get().recordError(makeDiagnostic(
-          DiagnosticCode::ProviderProducedNoValues, detail::firstProviderLocation<Function>()));
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [] -> void {
+          const Option<Ref<TestEnvironment>> environment = currentEnvironment();
+          if (not environment)
+            panic("Switch could not report an empty provider without an active environment");
+          environment->get().recordError(makeDiagnostic(
+              DiagnosticCode::ProviderProducedNoValues, detail::firstProviderLocation<Function>()));
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 };
 
@@ -552,11 +557,17 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [this](const Context &context) -> decltype(auto) {
-      return detail::invokeWithFixtures<Namespace, Function>(
-          context, suiteFixtures_, caseValues_, providerValues_);
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [this](const Context &context) -> decltype(auto) {
+          return detail::invokeWithFixtures<Namespace, Function>(
+              context, suiteFixtures_, caseValues_, providerValues_);
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 
 private:
@@ -602,11 +613,17 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [this](const Context &context) -> decltype(auto) {
-      return detail::invokeMemberWithFixtures<Namespace, Function>(
-          context, suiteFixtures_, subject_, caseValues_, providerValues_);
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [this](const Context &context) -> decltype(auto) {
+          return detail::invokeMemberWithFixtures<Namespace, Function>(
+              context, suiteFixtures_, subject_, caseValues_, providerValues_);
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 
 private:
@@ -647,11 +664,17 @@ public:
         request.timeMode);
   }
 
-  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const -> void override {
-    runBatch(request.descriptor.get(), [this](const Context &context) -> decltype(auto) {
-      return detail::invokeMemberFromFixture<Namespace, Function>(
-          context, suiteFixtures_, caseValues_, providerValues_);
-    }, request.timeMode, count, sink);
+  auto invokeBatch(const InvocationRequest &request, usize count, BatchExecutionContext &sink) const
+      -> void override {
+    runBatch(
+        request.descriptor.get(),
+        [this](const Context &context) -> decltype(auto) {
+          return detail::invokeMemberFromFixture<Namespace, Function>(
+              context, suiteFixtures_, caseValues_, providerValues_);
+        },
+        request.timeMode,
+        count,
+        sink);
   }
 
 private:
@@ -683,45 +706,47 @@ struct ProviderWorkContext final {
 
 template <std::meta::info Namespace, std::meta::info Function, class CaseValues>
 auto appendProviderWorkItems(const ProviderWorkContext<Namespace, CaseValues> &context) -> void {
-  const usize providerCount = detail::forEachProviderCombination<Function>([&context](
-                                                                               const auto &...providerValues)
-                                                                               -> void {
-    const String providerDescription = detail::providerDescription<Function>(providerValues...);
-    auto providerTuple = std::make_tuple(providerValues...);
-    const TestDescriptor descriptor =
-        makeTestDescriptor<Function>(context.testCaseIndex, context.caseDescription, providerDescription);
-    using ProviderTuple = std::remove_cvref_t<decltype(providerTuple)>;
+  const usize providerCount =
+      detail::forEachProviderCombination<Function>([&context](const auto &...providerValues) -> void {
+        const String providerDescription = detail::providerDescription<Function>(providerValues...);
+        auto providerTuple = std::make_tuple(providerValues...);
+        const TestDescriptor descriptor =
+            makeTestDescriptor<Function>(context.testCaseIndex, context.caseDescription, providerDescription);
+        using ProviderTuple = std::remove_cvref_t<decltype(providerTuple)>;
 
-    if constexpr (isNonStaticMember<Namespace, Function>()) {
-      if constexpr (ReflectedFunctionMetadata<Function>::subjects.size() != 0) {
-        constexpr std::meta::info annotation = ReflectedFunctionMetadata<Function>::subjects.front();
-        using Annotation = meta::TypeObject<annotation>;
-        constexpr Annotation subjectAnnotation = std::meta::extract<Annotation>(annotation);
-        using SubjectValue = std::remove_cvref_t<decltype(subjectAnnotation.value())>;
-        using Factory = MemberInvocationFactory<Namespace, Function, SubjectValue, CaseValues, ProviderTuple>;
+        if constexpr (isNonStaticMember<Namespace, Function>()) {
+          if constexpr (ReflectedFunctionMetadata<Function>::subjects.size() != 0) {
+            constexpr std::meta::info annotation = ReflectedFunctionMetadata<Function>::subjects.front();
+            using Annotation = typename[:std::meta::type_of(annotation):];
+            constexpr Annotation subjectAnnotation = std::meta::extract<Annotation>(annotation);
+            using SubjectValue = std::remove_cvref_t<decltype(subjectAnnotation.value())>;
+            using Factory =
+                MemberInvocationFactory<Namespace, Function, SubjectValue, CaseValues, ProviderTuple>;
 
-        context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
-            invocationCapabilities<Namespace, Function>(),
-        std::make_shared<Factory>(subjectAnnotation.value(),
-                context.caseValues,
-                std::move(providerTuple),
-                context.suiteFixtures.get())});
-      } else {
-        using Factory = FixtureMemberInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
+            context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
+                invocationCapabilities<Namespace, Function>(),
+                std::make_shared<Factory>(subjectAnnotation.value(),
+                    context.caseValues,
+                    std::move(providerTuple),
+                    context.suiteFixtures.get())});
+          } else {
+            using Factory = FixtureMemberInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
 
-        context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
-            invocationCapabilities<Namespace, Function>(),
-            std::make_shared<Factory>(context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
-      }
-    } else {
-      using Factory = ReflectedInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
+            context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
+                invocationCapabilities<Namespace, Function>(),
+                std::make_shared<Factory>(
+                    context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
+          }
+        } else {
+          using Factory = ReflectedInvocationFactory<Namespace, Function, CaseValues, ProviderTuple>;
 
-      context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
-          invocationCapabilities<Namespace, Function>(),
-          std::make_shared<Factory>(context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
-    }
-    ++context.testCaseIndex;
-  });
+          context.session.get().appendPlannedCase(detail::PlannedCase{descriptor,
+              invocationCapabilities<Namespace, Function>(),
+              std::make_shared<Factory>(
+                  context.caseValues, std::move(providerTuple), context.suiteFixtures.get())});
+        }
+        ++context.testCaseIndex;
+      });
 
   if (providerCount != 0)
     return;
@@ -739,7 +764,7 @@ template <std::meta::info Namespace, std::meta::info Function, std::meta::info A
 auto appendCaseWorkItems(detail::RunSession &session,
     FixtureScope<Namespace> &suiteFixtures,
     usize &testCaseIndex) -> void {
-  using Ann = meta::TypeObject<Annotation>;
+  using Ann = typename[:std::meta::type_of(Annotation):];
   constexpr Ann testCase = std::meta::extract<Ann>(Annotation);
   const String caseDescription = testCase.describe();
   const auto caseValueTuple = caseValues(testCase);
@@ -773,7 +798,7 @@ consteval auto isDiscoveredTest() -> bool {
 
 template <std::meta::info Scope, class Configuration>
 auto appendScopeDescriptors(Vec<TestDescriptor> &descriptors) -> void {
-  template for (constexpr std::meta::info member : meta::members<Scope, meta::AccessContext::unchecked()>) {
+  template for (constexpr std::meta::info member : meta::members(Scope)) {
     if constexpr (std::meta::is_function(member) and isDiscoveredTest<Scope, member, Configuration>()) {
       appendDescriptors<member>(descriptors);
     }
@@ -786,7 +811,7 @@ auto appendScopeDescriptors(Vec<TestDescriptor> &descriptors) -> void {
 template <std::meta::info FixtureNamespace, std::meta::info Scope, class Configuration>
 auto appendScopeWorkItems(detail::RunSession &session, FixtureScope<FixtureNamespace> &suiteFixtures)
     -> void {
-  template for (constexpr std::meta::info member : meta::members<Scope, meta::AccessContext::unchecked()>) {
+  template for (constexpr std::meta::info member : meta::members(Scope)) {
     if constexpr (std::meta::is_function(member) and isDiscoveredTest<Scope, member, Configuration>()) {
       appendWorkItems<FixtureNamespace, member>(session, suiteFixtures);
     }
@@ -811,7 +836,7 @@ template <std::meta::info Scope, class Configuration>
 consteval auto scopeHasDynamicProviders() -> bool {
   bool dynamic{};
 
-  template for (constexpr std::meta::info member : meta::members<Scope, meta::AccessContext::unchecked()>) {
+  template for (constexpr std::meta::info member : meta::members(Scope)) {
     if constexpr (std::meta::is_function(member) and isDiscoveredTest<Scope, member, Configuration>()) {
       if constexpr (hasDynamicProviders<member>())
         dynamic = true;
@@ -909,9 +934,8 @@ template <std::meta::info Scope, class Configuration>
       },
       options.captureTiming != CapturePolicy::None};
   reporter.beginLive(output, options.captureTiming != CapturePolicy::None);
-  accumulator.setCompletionObserver([&reporter](const TestCaseResult &testCase) {
-    reporter.consumeLive(testCase);
-  });
+  accumulator.setCompletionObserver(
+      [&reporter](const TestCaseResult &testCase) -> void { reporter.consumeLive(testCase); });
   static_cast<void>(detail::executePlannedCases(session, options, accumulator));
   RunReport report = std::move(accumulator).finish();
   reporter.finishLive(report);

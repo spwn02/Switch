@@ -110,7 +110,7 @@ inline constexpr usize failingIteration{37};
 liveReporterRendersCompletedCases() -> void {
   std::ostringstream output{};
   Reporter reporter{ReporterOptions{
-      .renderer = RendererOptions{.color = ColorMode::Never},
+      .renderer = RendererOptions{.color = Switch::ColorMode::Never},
       .showPassedTests = true,
       .showProgress = false,
   }};
@@ -264,7 +264,7 @@ defaultTraceCapturesEveryCaseAndRendersFailuresByDefault() -> void {
       ReporterOptions{
           .renderer =
               RendererOptions{
-                  .color = ColorMode::Never,
+                  .color = Switch::ColorMode::Never,
                   .terminal = false,
                   .showSource = false,
               },
@@ -282,21 +282,21 @@ defaultTraceCapturesEveryCaseAndRendersFailuresByDefault() -> void {
   require(executions.size() == 2_exp);
   require(std::ranges::all_of(
       executions, [](const TestExecution &execution) -> bool { return not execution.state.traces.empty(); }));
-  check(executions.front().traceMode == TraceMode::ForcedFailures);
+  check(executions.front().traceMode == Switch::TraceMode::ForcedFailures);
   check(not output.str().contains("passing trace"));
   check(output.str().contains("failing trace"));
 }
 
 [[ = test, = group("framework"), = tag("runner") ]] auto forceTraceCanRenderSuccessfulCases() -> void {
   const Vec<TestExecution> executions = runAllDetailed<^^TraceSubjects>(RunOptions{
-      .traceMode = TraceMode::ForcedAll,
+      .traceMode = Switch::TraceMode::ForcedAll,
       .isolation = CrashIsolation::InProcess,
   });
   Reporter reporter{
       ReporterOptions{
           .renderer =
               RendererOptions{
-                  .color = ColorMode::Never,
+                  .color = Switch::ColorMode::Never,
                   .terminal = false,
                   .showSource = false,
               },
@@ -370,7 +370,7 @@ parallelDiagnosticsRenderInLogicalOrder() -> void {
         ReporterOptions{
             .renderer =
                 RendererOptions{
-                    .color = ColorMode::Never,
+                    .color = Switch::ColorMode::Never,
                     .terminal = false,
                     .showSource = false,
                 },

@@ -165,7 +165,7 @@ template <class Function>
     Function function,
     std::source_location location = std::source_location::current()) -> MeasurementSummary {
   if (samples == 0)
-    fatal("Switch measure() requires at least one sample");
+    panic("Switch measure() requires at least one sample");
 
   Vec<std::chrono::steady_clock::duration> values{};
   values.reserve(samples);
@@ -187,7 +187,7 @@ template <detail::AsyncMeasurementFunction Function>
     Function function,
     std::source_location location = std::source_location::current()) -> Task<MeasurementSummary> {
   if (samples == 0)
-    fatal("Switch measure() requires at least one sample");
+    panic("Switch measure() requires at least one sample");
 
   return detail::measureAsync(name, samples, std::move(function), {}, 0, location);
 }

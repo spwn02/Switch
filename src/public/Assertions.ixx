@@ -21,7 +21,7 @@ concept BoolTestable = requires(Condition &&condition) {
 [[nodiscard]] auto activeEnvironment() -> TestEnvironment & {
   const Option<Ref<TestEnvironment>> environment = currentEnvironment();
   if (not environment)
-    fatal("Switch assertions require an active test environment");
+    panic("Switch assertions require an active test environment");
 
   return environment->get();
 }

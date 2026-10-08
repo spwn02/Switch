@@ -450,7 +450,7 @@ template <class Range, class Value>
 
   if constexpr (StringLike<std::remove_cvref_t<decltype(rangeValue)>> and
                 StringLike<std::remove_cvref_t<decltype(expectedValue)>>) {
-    passed = StringView{rangeValue}.find(StringView{expectedValue}) != StringView::npos;
+    passed = StringView{rangeValue}.contains(StringView{expectedValue});
   } else {
     static_assert(
         std::ranges::forward_range<std::remove_cvref_t<decltype(rangeValue)>> and requires {

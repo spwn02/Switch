@@ -156,7 +156,7 @@ auto reset() -> void {
   caseCreations.store(0, std::memory_order_relaxed);
 }
 
-[[ = fixture, = once ]] auto sharedFixture() -> SharedFixture {
+[[ = fixture, = Switch::once ]] auto sharedFixture() -> SharedFixture {
   sharedCreations.fetch_add(1, std::memory_order_relaxed);
   std::this_thread::sleep_for(std::chrono::milliseconds{10});
   return SharedFixture{
@@ -260,7 +260,7 @@ struct Fixture final {
   std::shared_ptr<CrossSuiteState::LifetimeProbe> lifetime;
 };
 
-[[ = fixture, = once ]] auto fixture() -> Fixture {
+[[ = fixture, = Switch::once ]] auto fixture() -> Fixture {
   CrossSuiteState::leftFixtureCreations.fetch_add(1, std::memory_order_relaxed);
   return Fixture{
       .lifetime = std::make_shared<CrossSuiteState::LifetimeProbe>(),
@@ -281,7 +281,7 @@ struct Fixture final {
   std::shared_ptr<CrossSuiteState::LifetimeProbe> lifetime;
 };
 
-[[ = fixture, = once ]] auto fixture() -> Fixture {
+[[ = fixture, = Switch::once ]] auto fixture() -> Fixture {
   CrossSuiteState::rightFixtureCreations.fetch_add(1, std::memory_order_relaxed);
   return Fixture{
       .lifetime = std::make_shared<CrossSuiteState::LifetimeProbe>(),

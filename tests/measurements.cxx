@@ -10,7 +10,7 @@ namespace Tests::measurements {
 
 namespace Subjects {
 
-[[ = test, = group("framework"), = tag("measurements", "samples"), = repeat(3), = warmup(1) ]] auto
+[[ = test, = group("framework"), = tag("measurements", "samples"), = Switch::repeat(3), = warmup(1) ]] auto
 collectsSamples(const Context[[= context]] & context) -> void {
   if (context.warmup)
     return;
