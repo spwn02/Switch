@@ -2,6 +2,7 @@ import std;
 
 import Miracle;
 import Switch;
+import SwitchTests.ScopeExit;
 
 using namespace Miracle;
 using namespace Switch;
@@ -63,10 +64,11 @@ auto exercise(usize index) -> Task<void> {
   if (previous != 0)
     states.at(index).overlaps.fetch_add(1, std::memory_order_relaxed);
 
-  const auto cleanup = std::scope_exit([] -> void { cleanups.fetch_add(1, std::memory_order_relaxed); });
+  const auto cleanup =
+      SwitchTests::ScopeExit([] -> void { cleanups.fetch_add(1, std::memory_order_relaxed); });
 
-  const auto release =
-      std::scope_exit([index] -> void { states.at(index).active.fetch_sub(1, std::memory_order_relaxed); });
+  const auto release = SwitchTests::ScopeExit(
+      [index] -> void { states.at(index).active.fetch_sub(1, std::memory_order_relaxed); });
 
   co_await yield();
   co_await yield();
@@ -111,7 +113,7 @@ auto observe() -> Task<void> {
       previous < current and not peak.compare_exchange_weak(previous, current, std::memory_order_relaxed)) {
   }
 
-  const auto release = std::scope_exit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
+  const auto release = SwitchTests::ScopeExit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
 
   co_await yield();
   co_await yield();
@@ -153,7 +155,7 @@ repeatsConcurrently() -> Task<void> {
       previous < current and not peak.compare_exchange_weak(previous, current, std::memory_order_relaxed)) {
   }
 
-  const auto release = std::scope_exit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
+  const auto release = SwitchTests::ScopeExit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
 
   // Gate on peak, not active: active can drop back down the instant any
   // attempt observes the target and departs, which can permanently strand
@@ -178,7 +180,8 @@ auto reset() -> void {
 }
 
 auto awaitBeyondTimeout() -> Task<void> {
-  const auto cleanup = std::scope_exit([] -> void { cleanups.fetch_add(1, std::memory_order_relaxed); });
+  const auto cleanup =
+      SwitchTests::ScopeExit([] -> void { cleanups.fetch_add(1, std::memory_order_relaxed); });
 
   co_await sleepFor(std::chrono::hours{1});
 }
@@ -249,7 +252,7 @@ samplesRemainSerial() -> Task<void> {
       previous < current and not peak.compare_exchange_weak(previous, current, std::memory_order_relaxed)) {
   }
 
-  const auto release = std::scope_exit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
+  const auto release = SwitchTests::ScopeExit([] -> void { active.fetch_sub(1, std::memory_order_relaxed); });
 
   co_await yield();
 }

@@ -15,6 +15,7 @@ import std;
 import Miracle;
 
 import :FaultIsolation;
+import :Task;
 
 using namespace Miracle;
 
@@ -231,7 +232,7 @@ auto readFaultRecord(const Path &path) noexcept -> Option<NativeFault> {
     return None;
 
   const auto closeDescriptor =
-      std::scope_exit([descriptor] noexcept -> void { static_cast<void>(::close(descriptor)); });
+      ScopeExit([descriptor] noexcept -> void { static_cast<void>(::close(descriptor)); });
   FaultRecord record{};
   Byte *data = reinterpret_cast<Byte *>(std::addressof(record));
   usize remaining = sizeof(record);

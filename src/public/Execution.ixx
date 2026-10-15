@@ -689,7 +689,7 @@ auto run(TestDescriptor descriptor, Function &&function, TimeMode timeMode = Tim
   detail::ActiveExecution active{std::move(descriptor), invocation, timeMode};
   const std::source_location location = active.execution.descriptor.location;
   const auto finalizeEnvironment =
-      std::scope_exit([&active, location] -> void { active.environment.finalize(location); });
+      detail::ScopeExit([&active, location] -> void { active.environment.finalize(location); });
   active.prepare(invocation);
   const Context context = detail::makeContext(active, invocation);
 
@@ -728,7 +728,7 @@ template <detail::TestInvocable Function>
   detail::ActiveExecution active{std::move(descriptor), invocation, timeMode};
   const std::source_location location = active.execution.descriptor.location;
   const auto finalizeEnvironment =
-      std::scope_exit([&active, location] -> void { active.environment.finalize(location); });
+      detail::ScopeExit([&active, location] -> void { active.environment.finalize(location); });
   active.prepare(invocation);
   const Context context = detail::makeContext(active, invocation);
 

@@ -198,13 +198,9 @@ direct_parameter_annotations
   -> parameters_of
   -> annotations_of(parameter)
   -> extract<Annotation>
-
-std_scope
-  <scope>
-  -> std::scope_exit
 ```
 
-Each probe is compiled independently in a nested C++26 project. A selected CMake toolchain file is reused verbatim; Switch does not reconstruct compiler-specific mode flags. Without a toolchain file, the already-selected compiler and user-supplied global C++ flags are reused.
+Scope-exit cleanup uses a small Switch-owned internal RAII utility. It does not require the optional `<scope>` library header or add a standard-library capability gate. The utility is not exported as public API. The remaining compiler capability probe is compiled in a nested C++26 project. A selected CMake toolchain file is reused verbatim; Switch does not reconstruct compiler-specific mode flags. Without a toolchain file, the already-selected compiler and user-supplied global C++ flags are reused.
 
 Probe results are emitted as `SwitchCapabilities.json`. Failed probe build logs are retained beneath `CMakeFiles/SwitchCapabilities/`, and configuration reports all missing Switch-specific capabilities together.
 

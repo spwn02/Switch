@@ -2,6 +2,7 @@ import std;
 
 import Miracle;
 import Switch;
+import SwitchTests.ScopeExit;
 
 using namespace Miracle;
 using namespace Switch;
@@ -123,7 +124,7 @@ auto writeFile(const Path &path) -> void {
 
 [[ = test, = group("framework"), = tag("providers") ]] auto matchesAndFiltersFiles() -> void {
   const Path root = temporaryDirectory();
-  const auto cleanup = std::scope_exit([&root] -> void {
+  const auto cleanup = SwitchTests::ScopeExit([&root] -> void {
     std::error_code error;
     std::filesystem::remove_all(root, error);
   });

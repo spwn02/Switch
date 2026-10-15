@@ -93,24 +93,6 @@ auto main() -> int {
 ]=])
 
   file(
-    WRITE "${capability_source_dir}/std_scope.cxx"
-    [=[
-#include <scope>
-
-auto main() -> int {
-  bool invoked{};
-
-  {
-    std::scope_exit guard([&invoked] {
-      invoked = true;
-    });
-  }
-
-  return invoked ? 0 : 1;
-}
-]=])
-
-  file(
     WRITE "${capability_source_dir}/CMakeLists.txt"
     [=[
 cmake_minimum_required(VERSION 4.4 FATAL_ERROR)
@@ -121,7 +103,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(SwitchCapabilities LANGUAGES CXX)
 
-foreach(capability IN ITEMS direct_parameter_annotations std_scope)
+foreach(capability IN ITEMS direct_parameter_annotations)
   add_executable(
     "capability_${capability}"
     "${CMAKE_CURRENT_SOURCE_DIR}/${capability}.cxx")
@@ -179,13 +161,11 @@ endforeach()
     message(FATAL_ERROR "${failure_message}")
   endif()
 
-  set(capability_names direct_parameter_annotations std_scope)
+  set(capability_names direct_parameter_annotations)
 
   set(capability_description_direct_parameter_annotations
       "C++26 direct annotations on reflected function parameters, including parameters_of, annotations_of, and extract"
   )
-  set(capability_description_std_scope "C++23 <scope> with std::scope_exit")
-
   set(missing_capabilities)
 
   foreach(capability IN LISTS capability_names)
@@ -239,8 +219,7 @@ endforeach()
       "{\n"
       "  \"schemaVersion\": 1,\n"
       "  \"required\": {\n"
-      "    \"direct_parameter_annotations\": ${capability_json_direct_parameter_annotations},\n"
-      "    \"std_scope\": ${capability_json_std_scope}\n"
+      "    \"direct_parameter_annotations\": ${capability_json_direct_parameter_annotations}\n"
       "  }\n"
       "}\n")
 

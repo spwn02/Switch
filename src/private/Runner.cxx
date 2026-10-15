@@ -7,6 +7,7 @@ import :Runner;
 import :FaultIsolation;
 import :Reporting;
 import :Worker;
+import :Task;
 
 using namespace Miracle;
 
@@ -814,7 +815,7 @@ auto appendWorkerOutcome(Vec<TestExecution> &executions,
     return unavailableWorker(plan);
   const auto &[resultPath, faultPath] = *paths;
 
-  const auto cleanupWorkerFiles = std::scope_exit([&] -> void { removeWorkerFiles(resultPath, faultPath); });
+  const auto cleanupWorkerFiles = ScopeExit([&] -> void { removeWorkerFiles(resultPath, faultPath); });
 
   const Result<Path> executable = isolation::executablePath();
   if (not executable)

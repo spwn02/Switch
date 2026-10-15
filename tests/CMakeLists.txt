@@ -5,6 +5,17 @@ file(GLOB switch_test_sources CONFIGURE_DEPENDS
 
 target_sources(SwitchTests PRIVATE ${switch_test_sources})
 
+target_sources(
+  SwitchTests
+  PRIVATE FILE_SET
+          switch_test_support_modules
+          TYPE
+          CXX_MODULES
+          BASE_DIRS
+          "${CMAKE_CURRENT_SOURCE_DIR}"
+          FILES
+          ScopeExit.ixx)
+
 target_compile_features(SwitchTests PRIVATE cxx_std_26)
 
 set_target_properties(
