@@ -12,14 +12,14 @@ permissions:
   contents: read
 
 env:
-  CXX26_SNAPSHOT: cxx26-2026.09.05
-  CXX26_REVISION: 6c7ef6afbfd8456c964c7a2625b3ea2aaa7d613f
-  CXX26_ASSET: clang-cxx26-2026.09.05-linux-x86_64
-  MIRACLE_REVISION: bf1b47514cc022fe0e9786baef16043f311cf3e7
+  CXX26_SNAPSHOT: cxx26-2026.10.09.2
+  CXX26_REVISION: 040df2b05ea338d107fac7387a2e4db835d746e0
+  CXX26_ASSET: clang-cxx26-2026.10.09.2-linux-x86_64
+  MIRACLE_REVISION: e1e5817c651d124d02930b86510e2b05fb7c7d2d
 
 jobs:
   reference:
-    name: Reference C++26 (cxx26-2026.09.05)
+    name: Reference C++26 (cxx26-2026.10.09.2)
     runs-on: ubuntu-22.04
 
     steps:
@@ -35,7 +35,7 @@ jobs:
             ca-certificates curl gh ninja-build python3 python3-venv zstd
 
           python3 -m venv "$RUNNER_TEMP/cmake"
-          "$RUNNER_TEMP/cmake/bin/pip" install --no-cache-dir cmake==4.4.2
+          "$RUNNER_TEMP/cmake/bin/pip" install --no-cache-dir cmake==4.4.3
           echo "$RUNNER_TEMP/cmake/bin" >> "$GITHUB_PATH"
 
       - name: Install pinned reference toolchain

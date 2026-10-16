@@ -39,14 +39,14 @@ if(NOT 26 IN_LIST CMAKE_CXX_COMPILER_IMPORT_STD)
 endif()
 
 set(SWITCH_MIRACLE_FETCHCONTENT_TAG
-    "v0.1.0-rc.1"
+    "v0.5.27"
     CACHE STRING "Miracle release used by Switch's FetchContent fallback")
 
 # Dependency injection is intentionally target-first. A parent build such as
 # Miracle's self-tests can provide Miracle::Miracle directly without Switch
 # attempting to discover or populate another copy.
 if(NOT TARGET Miracle::Miracle)
-  find_package(Miracle 0.1.0 CONFIG QUIET)
+  find_package(Miracle 0.5.27 CONFIG QUIET)
 endif()
 
 # FETCHCONTENT_SOURCE_DIR_MIRACLE is the standard explicit source override for

@@ -29,7 +29,7 @@ endif()
 include(CMakeFindDependencyMacro)
 
 if(NOT TARGET Miracle::Miracle)
-  find_dependency(Miracle 0.1.0 CONFIG)
+  find_dependency(Miracle 0.5.27 CONFIG)
 endif()
 
 if(NOT TARGET Switch::Switch)
