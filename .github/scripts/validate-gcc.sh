@@ -40,10 +40,11 @@ resolve_miracle() {
 require_miracle_revision() {
   [[ "${SWITCH_GCC_SYNC_CANDIDATE:-0}" == "1" && -z "${MIRACLE_SOURCE_DIR:-}" ]] || return 0
 
-  local required
-  required="$(sed -n 's/^  MIRACLE_REVISION: \([0-9a-f]\{40\}\)$/\1/p' "$repo_root/.github/workflows/ci.yml")"
+  # The workflow supplies master's pin: the candidate's own ci.yml may carry
+  # gcc's older copy because gcc wins merge conflicts.
+  local required="${SWITCH_REQUIRED_MIRACLE_REVISION:-}"
   if [[ ! "$required" =~ ^[0-9a-f]{40}$ ]]; then
-    echo "Could not read MIRACLE_REVISION from .github/workflows/ci.yml" >&2
+    echo "SWITCH_REQUIRED_MIRACLE_REVISION must be a 40-character commit SHA" >&2
     exit 1
   fi
 

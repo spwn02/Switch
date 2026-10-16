@@ -56,9 +56,19 @@ jobs:
         run: |
           set -euo pipefail
 
+          required_miracle="$(
+            git show origin/master:.github/workflows/ci.yml |
+              sed -n 's/^  MIRACLE_REVISION: \([0-9a-f]\{40\}\)$/\1/p'
+          )"
+          if [[ ! "$required_miracle" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::could not read MIRACLE_REVISION from master's ci.yml"
+            exit 1
+          fi
+
           set +e
           docker run --rm \
             --env SWITCH_GCC_SYNC_CANDIDATE=1 \
+            --env SWITCH_REQUIRED_MIRACLE_REVISION="$required_miracle" \
             --volume "$GITHUB_WORKSPACE:/workspace" \
             --workdir /workspace \
             archlinux:latest \
