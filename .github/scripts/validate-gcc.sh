@@ -30,11 +30,32 @@ resolve_miracle() {
   miracle_source="${RUNNER_TEMP:-$repo_root/build}/Miracle-gcc-$miracle_sha"
   rm -rf "$miracle_source"
   git clone --no-checkout --filter=blob:none "$repository" "$miracle_source"
-  git -C "$miracle_source" fetch --depth 1 origin "$miracle_sha"
+  git -C "$miracle_source" fetch --filter=blob:none origin "$miracle_sha"
   git -C "$miracle_source" checkout --detach "$miracle_sha"
 }
 
+# Sync candidates may only be built against a Miracle:gcc that already contains
+# the Miracle revision master requires. Otherwise gcc is simply behind, which
+# is not a Switch regression, so report it with a distinct status.
+require_miracle_revision() {
+  [[ "${SWITCH_GCC_SYNC_CANDIDATE:-0}" == "1" && -z "${MIRACLE_SOURCE_DIR:-}" ]] || return 0
+
+  local required
+  required="$(sed -n 's/^  MIRACLE_REVISION: \([0-9a-f]\{40\}\)$/\1/p' "$repo_root/.github/workflows/ci.yml")"
+  if [[ ! "$required" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "Could not read MIRACLE_REVISION from .github/workflows/ci.yml" >&2
+    exit 1
+  fi
+
+  git -C "$miracle_source" fetch --filter=blob:none origin "$required"
+  if ! git -C "$miracle_source" merge-base --is-ancestor "$required" "$miracle_sha"; then
+    echo "GCC sync candidate needs Miracle $required, which Miracle:gcc $miracle_sha does not contain yet."
+    exit 20
+  fi
+}
+
 resolve_miracle
+require_miracle_revision
 
 printf 'Switch GCC dependency: Miracle %s (%s)\n' "$miracle_sha" "$miracle_source"
 

@@ -51,11 +51,14 @@ jobs:
           git diff --check origin/gcc..HEAD
 
       - name: Validate synchronization candidate on GCC
+        id: gcc_validation
         shell: bash
         run: |
           set -euo pipefail
 
+          set +e
           docker run --rm \
+            --env SWITCH_GCC_SYNC_CANDIDATE=1 \
             --volume "$GITHUB_WORKSPACE:/workspace" \
             --workdir /workspace \
             archlinux:latest \
@@ -65,8 +68,20 @@ jobs:
                 base-devel ca-certificates cmake git ninja
               bash ./.github/scripts/validate-gcc.sh
             '
+          status="$?"
+          set -e
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+          if [[ "$status" == "20" ]]; then
+            echo "::notice::Miracle:gcc is behind the Miracle revision master requires; gcc remains at its last compatible commit."
+            exit 0
+          fi
+
+          exit "$status"
 
       - name: Record GCC dependency alignment
+        if: steps.gcc_validation.outputs.status == '0'
         shell: bash
         run: |
           set -euo pipefail
@@ -102,6 +117,7 @@ jobs:
           if-no-files-found: error
 
       - name: Advance gcc
+        if: steps.gcc_validation.outputs.status == '0'
         shell: bash
         run: |
           set -euo pipefail
