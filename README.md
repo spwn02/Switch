@@ -11,7 +11,7 @@ Switch currently targets:
 - the complete C++26-and-earlier language and standard-library model
 - CMake 4.4 or newer
 - Ninja
-- [`spwn02/clang-cxx26:cxx26`](https://github.com/spwn02/clang-cxx26/tree/cxx26) and its matching libc++ as the reference implementation, pinned in CI to the immutable `cxx26-2026.09.05` snapshot.
+- [`spwn02/clang-cxx26:cxx26`](https://github.com/spwn02/clang-cxx26/tree/cxx26) and its matching libc++ as the reference implementation, pinned in CI to the immutable `cxx26-2026.10.27` snapshot.
 
 Switch has one public production dependency: [Miracle](https://github.com/spwn02/Miracle).
 

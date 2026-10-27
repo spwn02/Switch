@@ -22,7 +22,7 @@ There are no `Nyx::Test` compatibility aliases.
 
 Switch may adopt any standardized facility through C++26 whenever it produces a better testing model. If the current reference toolchain lacks that facility, the preferred response is to implement or port the missing standard behavior into the toolchain rather than weaken `master`.
 
-The reference implementation is [`spwn02/clang-cxx26:cxx26`](https://github.com/spwn02/clang-cxx26/tree/cxx26) together with its matching libc++. CI is pinned to the immutable `cxx26-2026.09.05` snapshot from source revision `6c7ef6afbfd8456c964c7a2625b3ea2aaa7d613f`. GCC compatibility is a deferred implementation concern and may trail `master`.
+The reference implementation is [`spwn02/clang-cxx26:cxx26`](https://github.com/spwn02/clang-cxx26/tree/cxx26) together with its matching libc++. CI is pinned to the immutable `cxx26-2026.10.27` snapshot from source revision `b56ae4e61cf1f46495f0fb08f2b9fc270aad162c`. GCC compatibility is a deferred implementation concern and may trail `master`.
 
 The GCC compatibility line uses the same canonical direct reflected parameter-annotation spelling whenever the executable `direct_parameter_annotations` capability probe passes.
  The complete branch and compiler policy is defined in [`compiler-support.md`](compiler-support.md).

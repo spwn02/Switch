@@ -94,7 +94,7 @@ For reflection the reference family exposes the current feature set through:
 -freflection-latest
 ```
 
-The `cxx26-2026.09.05` package also owns its contracts-mode defaults. Switch source should continue to target standardized syntax and semantics rather than reproducing those switches itself.
+The `cxx26-2026.10.27` package also owns its contracts-mode defaults. Switch source should continue to target standardized syntax and semantics rather than reproducing those switches itself.
 
 As implementation converges with upstream standardized compiler modes, reference-specific flags may disappear without changing the public Switch contract.
 
@@ -150,7 +150,7 @@ Two identities must remain distinct:
 cxx26
   mutable development branch
 
-cxx26-2026.09.05
+cxx26-2026.10.27
   current immutable validated snapshot
 ```
 
@@ -171,9 +171,9 @@ The snapshot rules are:
 The currently validated reference is:
 
 ```text
-snapshot: cxx26-2026.09.05
-source revision: 6c7ef6afbfd8456c964c7a2625b3ea2aaa7d613f
-asset: clang-cxx26-2026.09.05-linux-x86_64
+snapshot: cxx26-2026.10.27
+source revision: b56ae4e61cf1f46495f0fb08f2b9fc270aad162c
+asset: clang-cxx26-2026.10.27-linux-x86_64
 ```
 
 ## Validation scope
@@ -254,8 +254,8 @@ Switch release
   source branch:         master
   reference repository: spwn02/clang-cxx26
   development branch:   cxx26
-  reference snapshot:   cxx26-2026.09.05
-  toolchain revision:   6c7ef6afbfd8456c964c7a2625b3ea2aaa7d613f
+  reference snapshot:   cxx26-2026.10.27
+  toolchain revision:   b56ae4e61cf1f46495f0fb08f2b9fc270aad162c
 ```
 
 The already-published `v0.1.0-rc.1` remains immutable and continues to describe the historical reference snapshot recorded when it was released.
