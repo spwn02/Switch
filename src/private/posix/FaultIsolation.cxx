@@ -46,6 +46,8 @@ volatile std::sig_atomic_t faultDescriptor{-1};
   };
 }
 
+// sigaction stores the handler as a pointer to a function with C language linkage, so the handler is defined with it.
+extern "C" {
 auto faultHandler(int signalNumber, siginfo_t *information, void *context) noexcept -> void {
   u64 instruction{};
 #if defined(__x86_64__)
@@ -82,6 +84,7 @@ auto faultHandler(int signalNumber, siginfo_t *information, void *context) noexc
 
   ::_exit(128 + signalNumber);
 }
+} // extern "C"
 
 [[nodiscard]] auto faultPath(const WorkerLaunch &launch) -> Option<Path> {
   const auto variable = std::ranges::find_if(launch.variables,
